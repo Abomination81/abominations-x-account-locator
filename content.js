@@ -225,15 +225,25 @@
   }
 
   function removeSurfaceBadge(surface) {
-    badgeForSurface(surface)?.remove();
+    const badge = badgeForSurface(surface);
+    const host = badge?.parentElement;
+    badge?.remove();
+    host?.classList.remove("xal-user-cell-name-row");
   }
 
   function badgeHostForSurface(surface) {
     if (!surface.matches(USER_CELL_SELECTOR)) return surface;
-    const handleLink = [...surface.querySelectorAll("a[href]")].find((link) =>
-      shared.usernameFromHandleText(link.textContent)
+    const links = [...surface.querySelectorAll("a[href]")];
+    const username = usernameForUserCell(surface);
+    const displayNameIndex = shared.userCellDisplayNameIndex(
+      links.map((link) => link.textContent),
+      links.map((link) => link.getAttribute("href")),
+      username
     );
-    return handleLink?.parentElement?.parentElement || surface;
+    const displayNameLink = links[displayNameIndex];
+    const host = displayNameLink?.parentElement || surface;
+    if (host !== surface) host.classList.add("xal-user-cell-name-row");
+    return host;
   }
 
   function showBadge(surface, username, item) {

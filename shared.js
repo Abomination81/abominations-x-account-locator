@@ -48,6 +48,25 @@
     return null;
   }
 
+  function userCellDisplayNameIndex(linkTexts, linkHrefs, username) {
+    const normalizedUsername = normalizeUsername(username);
+    if (!normalizedUsername) return -1;
+
+    const texts = Array.isArray(linkTexts) ? linkTexts : [];
+    const hrefs = Array.isArray(linkHrefs) ? linkHrefs : [];
+    let firstIdentityLink = -1;
+
+    for (let index = 0; index < Math.max(texts.length, hrefs.length); index += 1) {
+      if (usernameFromProfileHref(hrefs[index]) !== normalizedUsername) continue;
+      const text = String(texts[index] || "").trim();
+      if (!text) continue;
+      if (firstIdentityLink < 0) firstIdentityLink = index;
+      if (!sameUsername(usernameFromHandleText(text), normalizedUsername)) return index;
+    }
+
+    return firstIdentityLink;
+  }
+
   function usernameFromStatusHref(value) {
     if (!value) return null;
     try {
@@ -138,6 +157,7 @@
     parseAboutPayload,
     parseAboutQueryId,
     sameUsername,
+    userCellDisplayNameIndex,
     usernameFromHandleText,
     usernameFromProfileHref,
     usernameFromStatusHref,

@@ -25,6 +25,21 @@ test("extracts follower usernames from X user-cell identity links", () => {
   assert.equal(shared.usernameFromUserCellParts(["Display name"], ["/FallbackUser"]), "fallbackuser");
   assert.equal(shared.usernameFromUserCellParts([], ["/home"]), null);
 });
+test("selects the display-name link instead of the handle row", () => {
+  const texts = ["", "Clover 🍀", "@investclover", "USA"];
+  const hrefs = ["/investclover", "/investclover", "/investclover", "/investclover/about"];
+  assert.equal(shared.userCellDisplayNameIndex(texts, hrefs, "investclover"), 1);
+  assert.equal(
+    shared.userCellDisplayNameIndex(["", "ChefofBets", "@BaseonethL2"], [
+      "/BaseonethL2",
+      "/BaseonethL2",
+      "/BaseonethL2"
+    ], "baseonethl2"),
+    1
+  );
+  assert.equal(shared.userCellDisplayNameIndex(["", "@same"], ["/same", "/same"], "same"), 1);
+  assert.equal(shared.userCellDisplayNameIndex(["Display name"], ["/someone"], null), -1);
+});
 test("extracts status authors", () => {
   assert.equal(shared.usernameFromStatusHref("/HeyNavToor/status/123456"), "heynavtoor");
 });

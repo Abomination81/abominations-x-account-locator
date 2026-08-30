@@ -54,12 +54,25 @@ article[data-testid="tweet"],
 .xal-user-cell-surface .xal-user-cell-badge {
   position: static;
   display: inline-flex;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   align-items: center;
   margin-left: 6px;
   max-width: 120px;
   font-size: 10px;
   line-height: 15px;
+}
+
+.xal-user-cell-name-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  min-width: 0;
+}
+
+.xal-user-cell-name-row > a:not(.xal-user-cell-badge) {
+  flex: 0 1 auto !important;
+  min-width: 0;
+  width: auto !important;
 }
 
 @media (max-width: 430px) {
