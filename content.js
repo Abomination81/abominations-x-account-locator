@@ -26,6 +26,7 @@
   let cacheSaveTimer = null;
   let statsSaveTimer = null;
   let refreshFrame = null;
+  let ownUsername = null;
   let performanceStats = {
     completed: 0,
     averageMs: 0,
@@ -93,16 +94,6 @@
     return null;
   }
 
-  function usernameFromProfileHref(value) {
-    if (!value) return null;
-    try {
-      const match = new URL(value, location.origin).pathname.match(/^\/([A-Za-z0-9_]{1,15})\/?$/);
-      return match ? shared.normalizeUsername(match[1]) : null;
-    } catch {
-      return null;
-    }
-  }
-
   function usernameForQuote(quote) {
     for (const link of quote.querySelectorAll('a[href*="/status/"]')) {
       const username = shared.usernameFromStatusHref(link.getAttribute("href"));
@@ -114,11 +105,67 @@
       const fromHandle = shared.usernameFromHandleText(node.textContent);
       if (fromHandle) return fromHandle;
       if (node.matches("a[href]")) {
-        const fromProfile = usernameFromProfileHref(node.getAttribute("href"));
+        const fromProfile = shared.usernameFromProfileHref(node.getAttribute("href"));
         if (fromProfile) return fromProfile;
       }
     }
     return null;
+  }
+
+  function detectOwnUsername() {
+    for (const selector of [
+      'a[data-testid="AppTabBar_Profile_Link"][href]',
+      '[data-testid="SideNav_AccountSwitcher_Button"] a[href]',
+      '[data-testid="SideNav_AccountSwitcher_Button"] [href]'
+    ]) {
+      for (const node of document.querySelectorAll(selector)) {
+        const username = shared.usernameFromProfileHref(node.getAttribute("href"));
+        if (username) return username;
+      }
+    }
+
+    const accountSwitcher = document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]');
+    if (accountSwitcher) {
+      for (const node of accountSwitcher.querySelectorAll("span")) {
+        const username = shared.usernameFromHandleText(node.textContent);
+        if (username) return username;
+      }
+    }
+    return null;
+  }
+
+  function forgetQueuedUsername(username) {
+    queuedUsers.delete(username);
+    for (let index = queue.length - 1; index >= 0; index -= 1) {
+      if (queue[index] === username) queue.splice(index, 1);
+    }
+  }
+
+  function updateOwnUsername(username) {
+    const nextUsername = shared.normalizeUsername(username);
+    if (!nextUsername || shared.sameUsername(nextUsername, ownUsername)) return false;
+    ownUsername = nextUsername;
+    forgetQueuedUsername(ownUsername);
+
+    document
+      .querySelectorAll(`${TWEET_SELECTOR}, ${TWEET_SELECTOR} ${QUOTE_SELECTOR}`)
+      .forEach((surface) => {
+        delete surface.dataset.xalSelf;
+        if (isRelevant(surface)) prepareSurface(surface);
+      });
+    return true;
+  }
+
+  function skipOwnSurface(surface, username) {
+    const previousUsername = surface.dataset.xalUsername;
+    if (previousUsername) unregisterSurface(previousUsername, surface);
+    unregisterSurface(username, surface);
+    forgetQueuedUsername(username);
+    surface.querySelector(":scope > .xal-badge")?.remove();
+    surface.dataset.xalPrepared = "true";
+    surface.dataset.xalUsername = username;
+    surface.dataset.xalSelf = "true";
+    delete surface.dataset.xalLocation;
   }
 
   function registerSurface(username, surface) {
@@ -191,6 +238,13 @@
     const username = isQuote ? usernameForQuote(surface) : usernameForArticle(surface);
     if (!username) return;
 
+    if (!ownUsername) updateOwnUsername(detectOwnUsername());
+    if (shared.sameUsername(username, ownUsername)) {
+      skipOwnSurface(surface, username);
+      return;
+    }
+    delete surface.dataset.xalSelf;
+
     const previousUsername = surface.dataset.xalUsername;
     if (previousUsername && previousUsername !== username) {
       unregisterSurface(previousUsername, surface);
@@ -221,6 +275,7 @@
   }
 
   function enqueue(username, front = false) {
+    if (shared.sameUsername(username, ownUsername)) return;
     if (queuedUsers.has(username) || pendingHasUsername(username)) return;
     queuedUsers.add(username);
     front ? queue.unshift(username) : queue.push(username);
@@ -231,6 +286,7 @@
     while (queue.length) {
       const username = queue.shift();
       queuedUsers.delete(username);
+      if (shared.sameUsername(username, ownUsername)) continue;
       if (hasRelevantSurface(username)) return username;
     }
     return null;
@@ -285,6 +341,7 @@
 
     const request = finishRequest(String(event.data.requestId || ""));
     if (!request) return;
+    if (shared.sameUsername(request.username, ownUsername)) return void pumpQueue();
     const remaining = Number.isFinite(event.data.rateRemaining) ? event.data.rateRemaining : null;
     currentSpacing = remaining !== null && remaining <= 10 ? LOW_BUDGET_SPACING : BASE_SPACING;
 
@@ -359,6 +416,7 @@
   }
 
   const mutationObserver = new MutationObserver((records) => {
+    updateOwnUsername(detectOwnUsername());
     for (const record of records) {
       const recordElement = record.target instanceof Element ? record.target : record.target.parentElement;
       if (recordElement?.closest(".xal-badge")) continue;
@@ -396,6 +454,7 @@
     cache = stored.locationCache || Object.create(null);
     pauseUntil = Number(stored.pauseUntil || 0);
     performanceStats = { ...performanceStats, ...(stored.performanceStats || {}) };
+    ownUsername = detectOwnUsername();
     scan();
     mutationObserver.observe(document.documentElement, {
       childList: true,

@@ -16,6 +16,17 @@ test("normalizes X usernames and quote handles", () => {
 test("extracts status authors", () => {
   assert.equal(shared.usernameFromStatusHref("/HeyNavToor/status/123456"), "heynavtoor");
 });
+test("extracts the signed-in username only from profile links", () => {
+  assert.equal(shared.usernameFromProfileHref("/Abomination81"), "abomination81");
+  assert.equal(shared.usernameFromProfileHref("https://x.com/Abomination81/"), "abomination81");
+  assert.equal(shared.usernameFromProfileHref("/home"), null);
+  assert.equal(shared.usernameFromProfileHref("/someone/status/123"), null);
+});
+test("matches the signed-in account case-insensitively", () => {
+  assert.equal(shared.sameUsername("@Abomination81", "abomination81"), true);
+  assert.equal(shared.sameUsername("Abomination81", "someone_else"), false);
+  assert.equal(shared.sameUsername(null, "abomination81"), false);
+});
 test("applies location abbreviations", () => {
   assert.equal(shared.displayLocation("United States"), "USA");
   assert.equal(shared.displayLocation("North America"), "N. America");

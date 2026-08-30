@@ -24,9 +24,16 @@ test("supports quoted posts, custom colors, and status display", () => {
   assert.match(read("popup.html"), /id="badge-color"/);
   assert.match(read("popup.html"), /id="lookup-status"/);
 });
+test("skips location lookups and badges for the signed-in account", () => {
+  const content = read("content.js");
+  assert.match(content, /function detectOwnUsername\(\)/);
+  assert.match(content, /function skipOwnSurface\(surface, username\)/);
+  assert.match(content, /shared\.sameUsername\(username, ownUsername\)/);
+  assert.match(content, /shared\.sameUsername\(request\.username, ownUsername\)/);
+});
 test("manifest and icons are valid", () => {
   const manifest = JSON.parse(read("manifest.json"));
-  assert.equal(manifest.version, "0.5.0");
+  assert.equal(manifest.version, "0.6.0");
   for (const icon of Object.values(manifest.icons)) {
     assert.ok(fs.existsSync(path.join(root, icon)), `${icon} should exist`);
   }

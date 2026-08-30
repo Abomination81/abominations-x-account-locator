@@ -8,6 +8,20 @@
     "north america": "N. America",
     "united kingdom": "UK"
   });
+  const RESERVED_PROFILE_PATHS = new Set([
+    "compose",
+    "explore",
+    "home",
+    "i",
+    "login",
+    "logout",
+    "messages",
+    "notifications",
+    "privacy",
+    "search",
+    "settings",
+    "tos"
+  ]);
 
   function normalizeUsername(value) {
     const username = String(value || "").replace(/^@/, "").trim();
@@ -29,6 +43,25 @@
     } catch {
       return null;
     }
+  }
+
+  function usernameFromProfileHref(value) {
+    if (!value) return null;
+    try {
+      const match = new URL(value, "https://x.com").pathname.match(
+        /^\/([A-Za-z0-9_]{1,15})\/?$/
+      );
+      const username = match ? normalizeUsername(match[1]) : null;
+      return username && !RESERVED_PROFILE_PATHS.has(username) ? username : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function sameUsername(left, right) {
+    const normalizedLeft = normalizeUsername(left);
+    const normalizedRight = normalizeUsername(right);
+    return Boolean(normalizedLeft && normalizedRight && normalizedLeft === normalizedRight);
   }
 
   function normalizeLocation(value) {
@@ -83,7 +116,9 @@
     normalizeUsername,
     parseAboutPayload,
     parseAboutQueryId,
+    sameUsername,
     usernameFromHandleText,
+    usernameFromProfileHref,
     usernameFromStatusHref
   });
 })(globalThis);

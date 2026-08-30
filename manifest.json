@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Abominations X account locator",
   "short_name": "Abom X Locator",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Shows X's public 'Account based in' disclosure on posts. Built by Abomination81.",
   "permissions": ["storage"],
   "host_permissions": ["https://x.com/*", "https://twitter.com/*", "https://abs.twimg.com/*"],
