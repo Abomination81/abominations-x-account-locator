@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Abominations X account locator</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <img src="icons/icon-48.png" width="42" height="42" alt="" />
+        <div><h1>Abominations X account locator</h1><p>Built by Abomination81</p></div>
+      </header>
+      <label class="setting"><span>Show locations on posts</span><input id="enabled" type="checkbox" /></label>
+      <div class="setting">
+        <label for="badge-color">Badge color</label>
+        <div class="color-controls">
+          <input id="badge-color" type="color" value="#39ff14" />
+          <button id="reset-color" class="reset-color" type="button">Reset</button>
+        </div>
+      </div>
+      <div class="stats"><span>Lookup status</span><strong id="lookup-status">—</strong></div>
+      <div class="stats"><span>Average X lookup</span><strong id="average-lookup">—</strong></div>
+      <div class="stats"><span>Cached accounts</span><strong id="cache-count">—</strong></div>
+      <button id="clear-cache" class="wide-button" type="button">Clear local cache</button>
+      <p class="note">Uses X’s public “Account based in” field. It is an IP-derived estimate, not proof of nationality or identity.</p>
+      <footer>BUILT BY <strong>ABOMINATION81</strong></footer>
+    </main>
+    <script src="shared.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

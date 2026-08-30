@@ -1,0 +1,60 @@
+:root {
+  --abom-green: #39ff14;
+  --abom-black: #050805;
+}
+
+article[data-testid="tweet"],
+.xal-quote-surface {
+  position: relative;
+}
+
+.xal-badge {
+  --xal-accent: var(--abom-green);
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  right: 42px;
+  max-width: min(42%, 190px);
+  overflow: hidden;
+  padding: 2px 8px;
+  border: 1px solid var(--xal-accent);
+  border-radius: 999px;
+  color: var(--xal-accent);
+  background: color-mix(in srgb, var(--abom-black) 92%, transparent);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--xal-accent) 32%, transparent);
+  font: 750 11px/16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: 0.055em;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  backdrop-filter: blur(5px);
+}
+
+.xal-badge:hover,
+.xal-badge:focus-visible {
+  color: color-mix(in srgb, var(--xal-accent) 72%, white);
+  border-color: color-mix(in srgb, var(--xal-accent) 72%, white);
+  outline: none;
+}
+
+.xal-badge[data-location-uncertain]::before {
+  content: "~";
+  margin-right: 3px;
+}
+
+.xal-quote-surface > .xal-badge {
+  top: 8px;
+  right: 9px;
+  max-width: 36%;
+  font-size: 10px;
+  line-height: 15px;
+}
+
+@media (max-width: 430px) {
+  .xal-badge {
+    top: 8px;
+    right: 38px;
+    max-width: 34%;
+    font-size: 10px;
+  }
+}

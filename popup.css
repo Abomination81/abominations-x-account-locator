@@ -1,0 +1,25 @@
+:root {
+  color-scheme: dark;
+  --green: #39ff14;
+  --green-soft: #b7ffa8;
+  --black: #050805;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+body { width: 310px; margin: 0; color: var(--green-soft); background: var(--black); }
+main { padding: 16px; border: 1px solid color-mix(in srgb, var(--green) 38%, transparent); }
+header { display: flex; gap: 11px; align-items: center; margin-bottom: 16px; }
+header img { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--green) 55%, transparent)); }
+h1, p { margin: 0; }
+h1 { color: var(--green); font-size: 15px; line-height: 19px; }
+header p, .note { color: color-mix(in srgb, var(--green-soft) 66%, transparent); font-size: 11px; line-height: 15px; }
+.setting, .stats { display: flex; align-items: center; justify-content: space-between; min-height: 40px; border-top: 1px solid color-mix(in srgb, var(--green) 23%, transparent); font-size: 13px; }
+#enabled { width: 18px; height: 18px; accent-color: var(--green); }
+.color-controls { display: flex; gap: 7px; align-items: center; }
+#badge-color { width: 34px; height: 26px; padding: 0; border: 1px solid var(--green); border-radius: 6px; background: transparent; cursor: pointer; }
+button { border: 1px solid var(--green); border-radius: 999px; color: var(--green); background: transparent; font: inherit; font-weight: 700; cursor: pointer; }
+button:hover { color: var(--black); background: var(--green); }
+.reset-color { padding: 4px 8px; font-size: 10px; }
+.wide-button { width: 100%; margin: 10px 0 12px; padding: 8px 10px; }
+.stats strong { max-width: 145px; color: var(--green); font-size: 11px; text-align: right; }
+footer { margin-top: 14px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--green) 23%, transparent); color: color-mix(in srgb, var(--green) 70%, transparent); font-size: 9px; letter-spacing: .15em; text-align: center; }
+footer strong { color: var(--green); }
