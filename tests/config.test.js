@@ -24,6 +24,14 @@ test("supports quoted posts, custom colors, and status display", () => {
   assert.match(read("popup.html"), /id="badge-color"/);
   assert.match(read("popup.html"), /id="lookup-status"/);
 });
+test("supports follower and following user rows without affecting suggestions", () => {
+  const content = read("content.js");
+  assert.match(content, /const USER_CELL_SELECTOR = '\[data-testid="UserCell"\]';/);
+  assert.match(content, /function usernameForUserCell\(userCell\)/);
+  assert.match(content, /function isFollowerListPath\(\)/);
+  assert.match(read("styles.css"), /\.xal-user-cell-surface \.xal-user-cell-badge/);
+  assert.match(content, /function badgeHostForSurface\(surface\)/);
+});
 test("skips location lookups and badges for the signed-in account", () => {
   const content = read("content.js");
   assert.match(content, /function detectOwnUsername\(\)/);
@@ -39,7 +47,7 @@ test("renders the Abomination81 override without a location lookup", () => {
 });
 test("manifest and icons are valid", () => {
   const manifest = JSON.parse(read("manifest.json"));
-  assert.equal(manifest.version, "0.7.0");
+  assert.equal(manifest.version, "0.8.0");
   for (const icon of Object.values(manifest.icons)) {
     assert.ok(fs.existsSync(path.join(root, icon)), `${icon} should exist`);
   }

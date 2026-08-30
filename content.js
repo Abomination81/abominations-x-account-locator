@@ -14,6 +14,7 @@
   const PREFETCH_MARGIN = 300;
   const TWEET_SELECTOR = 'article[data-testid="tweet"]';
   const QUOTE_SELECTOR = '[data-testid="quoteTweet"]';
+  const USER_CELL_SELECTOR = '[data-testid="UserCell"]';
   const DEFAULT_SETTINGS = { enabled: true, badgeColor: shared.DEFAULT_ACCENT_COLOR };
 
   let settings = { ...DEFAULT_SETTINGS };
@@ -112,6 +113,20 @@
     return null;
   }
 
+  function usernameForUserCell(userCell) {
+    const links = [...userCell.querySelectorAll("a[href]")];
+    return shared.usernameFromUserCellParts(
+      links.map((link) => link.textContent),
+      links.map((link) => link.getAttribute("href"))
+    );
+  }
+
+  function isFollowerListPath() {
+    return /^\/[A-Za-z0-9_]{1,15}\/(?:verified_followers|followers|following)\/?$/.test(
+      location.pathname
+    );
+  }
+
   function detectOwnUsername() {
     for (const selector of [
       'a[data-testid="AppTabBar_Profile_Link"][href]',
@@ -148,7 +163,9 @@
     forgetQueuedUsername(ownUsername);
 
     document
-      .querySelectorAll(`${TWEET_SELECTOR}, ${TWEET_SELECTOR} ${QUOTE_SELECTOR}`)
+      .querySelectorAll(
+        `${TWEET_SELECTOR}, ${TWEET_SELECTOR} ${QUOTE_SELECTOR}, ${USER_CELL_SELECTOR}`
+      )
       .forEach((surface) => {
         delete surface.dataset.xalSelf;
         if (isRelevant(surface)) prepareSurface(surface);
@@ -161,7 +178,7 @@
     if (previousUsername) unregisterSurface(previousUsername, surface);
     unregisterSurface(username, surface);
     forgetQueuedUsername(username);
-    surface.querySelector(":scope > .xal-badge")?.remove();
+    removeSurfaceBadge(surface);
     surface.dataset.xalPrepared = "true";
     surface.dataset.xalUsername = username;
     surface.dataset.xalSelf = "true";
@@ -201,16 +218,36 @@
     return null;
   }
 
+  function badgeForSurface(surface) {
+    return surface.matches(USER_CELL_SELECTOR)
+      ? surface.querySelector(".xal-user-cell-badge")
+      : surface.querySelector(":scope > .xal-badge");
+  }
+
+  function removeSurfaceBadge(surface) {
+    badgeForSurface(surface)?.remove();
+  }
+
+  function badgeHostForSurface(surface) {
+    if (!surface.matches(USER_CELL_SELECTOR)) return surface;
+    const handleLink = [...surface.querySelectorAll("a[href]")].find((link) =>
+      shared.usernameFromHandleText(link.textContent)
+    );
+    return handleLink?.parentElement?.parentElement || surface;
+  }
+
   function showBadge(surface, username, item) {
     if (!item.location || !surface.isConnected || !settings.enabled) return;
-    let badge = surface.querySelector(":scope > .xal-badge");
+    const isUserCell = surface.matches(USER_CELL_SELECTOR);
+    let badge = badgeForSurface(surface);
     if (!badge) {
       badge = document.createElement("a");
       badge.className = "xal-badge";
+      badge.classList.toggle("xal-user-cell-badge", isUserCell);
       badge.target = "_self";
       badge.rel = "nofollow";
       badge.addEventListener("click", (event) => event.stopPropagation());
-      surface.appendChild(badge);
+      badgeHostForSurface(surface).appendChild(badge);
     }
     const uncertain = item.accurate === false;
     const note = uncertain ? " X marks this location as potentially inaccurate." : "";
@@ -237,7 +274,13 @@
   function prepareSurface(surface) {
     if (!settings.enabled || !surface.isConnected) return;
     const isQuote = surface.matches(QUOTE_SELECTOR);
-    const username = isQuote ? usernameForQuote(surface) : usernameForArticle(surface);
+    const isUserCell = surface.matches(USER_CELL_SELECTOR);
+    if (isUserCell && !isFollowerListPath()) return;
+    const username = isUserCell
+      ? usernameForUserCell(surface)
+      : isQuote
+        ? usernameForQuote(surface)
+        : usernameForArticle(surface);
     if (!username) return;
 
     if (!ownUsername) updateOwnUsername(detectOwnUsername());
@@ -250,13 +293,14 @@
     const previousUsername = surface.dataset.xalUsername;
     if (previousUsername && previousUsername !== username) {
       unregisterSurface(previousUsername, surface);
-      surface.querySelector(":scope > .xal-badge")?.remove();
+      removeSurfaceBadge(surface);
       delete surface.dataset.xalLocation;
     }
 
     surface.dataset.xalPrepared = "true";
     surface.dataset.xalUsername = username;
     surface.classList.toggle("xal-quote-surface", isQuote);
+    surface.classList.toggle("xal-user-cell-surface", isUserCell);
     registerSurface(username, surface);
 
     const overrideLocation = shared.locationOverride(username);
@@ -407,6 +451,10 @@
     ) observeSurface(root);
     root.querySelectorAll?.(TWEET_SELECTOR).forEach(observeSurface);
     root.querySelectorAll?.(`${TWEET_SELECTOR} ${QUOTE_SELECTOR}`).forEach(observeSurface);
+    if (isFollowerListPath()) {
+      if (root instanceof Element && root.matches(USER_CELL_SELECTOR)) observeSurface(root);
+      root.querySelectorAll?.(USER_CELL_SELECTOR).forEach(observeSurface);
+    }
   }
 
   function markDirtyFromNode(node) {
@@ -414,8 +462,12 @@
     if (!element) return;
     const quote = element.matches(QUOTE_SELECTOR) ? element : element.closest(QUOTE_SELECTOR);
     const tweet = element.matches(TWEET_SELECTOR) ? element : element.closest(TWEET_SELECTOR);
+    const userCell = element.matches(USER_CELL_SELECTOR)
+      ? element
+      : element.closest(USER_CELL_SELECTOR);
     if (quote && quote.closest(TWEET_SELECTOR)) dirtySurfaces.add(quote);
     if (tweet) dirtySurfaces.add(tweet);
+    if (userCell && isFollowerListPath()) dirtySurfaces.add(userCell);
 
     if (refreshFrame !== null) return;
     refreshFrame = requestAnimationFrame(() => {
@@ -452,7 +504,9 @@
           badge.style.setProperty("--xal-accent", settings.badgeColor);
         });
         document
-          .querySelectorAll(`${TWEET_SELECTOR}, ${TWEET_SELECTOR} ${QUOTE_SELECTOR}`)
+          .querySelectorAll(
+            `${TWEET_SELECTOR}, ${TWEET_SELECTOR} ${QUOTE_SELECTOR}, ${USER_CELL_SELECTOR}`
+          )
           .forEach((surface) => isRelevant(surface) && prepareSurface(surface));
       }
     }

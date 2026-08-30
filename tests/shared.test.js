@@ -13,6 +13,18 @@ test("normalizes X usernames and quote handles", () => {
   assert.equal(shared.usernameFromHandleText("@culturainquieta"), "culturainquieta");
   assert.equal(shared.usernameFromHandleText("hello @name"), null);
 });
+test("extracts follower usernames from X user-cell identity links", () => {
+  assert.equal(
+    shared.usernameFromUserCellParts(["", "ChefofBets", "@BaseonethL2"], [
+      "/BaseonethL2",
+      "/BaseonethL2",
+      "/BaseonethL2"
+    ]),
+    "baseonethl2"
+  );
+  assert.equal(shared.usernameFromUserCellParts(["Display name"], ["/FallbackUser"]), "fallbackuser");
+  assert.equal(shared.usernameFromUserCellParts([], ["/home"]), null);
+});
 test("extracts status authors", () => {
   assert.equal(shared.usernameFromStatusHref("/HeyNavToor/status/123456"), "heynavtoor");
 });

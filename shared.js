@@ -36,6 +36,18 @@
     return match ? normalizeUsername(match[1]) : null;
   }
 
+  function usernameFromUserCellParts(handleTexts, profileHrefs) {
+    for (const value of Array.isArray(handleTexts) ? handleTexts : []) {
+      const username = usernameFromHandleText(value);
+      if (username) return username;
+    }
+    for (const value of Array.isArray(profileHrefs) ? profileHrefs : []) {
+      const username = usernameFromProfileHref(value);
+      if (username) return username;
+    }
+    return null;
+  }
+
   function usernameFromStatusHref(value) {
     if (!value) return null;
     try {
@@ -128,6 +140,7 @@
     sameUsername,
     usernameFromHandleText,
     usernameFromProfileHref,
-    usernameFromStatusHref
+    usernameFromStatusHref,
+    usernameFromUserCellParts
   });
 })(globalThis);

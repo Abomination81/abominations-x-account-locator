@@ -4,7 +4,7 @@ Abominations X Account Locator has no developer-operated server, analytics, adve
 
 ## What the extension accesses
 
-- Public X usernames visible in ordinary and quoted posts.
+- Public X usernames visible in ordinary posts, quoted posts, and follower/following lists.
 - The signed-in X username shown in X's own navigation, used locally only to exclude that account from location lookups and badges.
 - X's public **Account based in** result for those usernames.
 - The user's existing X session only as needed to make requests to X.
