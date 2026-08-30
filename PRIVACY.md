@@ -18,6 +18,8 @@ The selected badge color, paused/enabled preference, bounded username-to-locatio
 
 The extension does not send usernames, browsing history, credentials, settings, analytics, or location results to Abomination81 or to any developer-operated service.
 
+`@Abomination81` is assigned the local custom label `XANADU`. This override does not make an X location request and does not alter X's own account disclosure.
+
 ## Third-party service
 
 Requests needed for the feature are sent to X and X's asset domain through the user's existing X session. Use of X remains subject to X's own terms and privacy policy.

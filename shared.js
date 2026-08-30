@@ -8,6 +8,9 @@
     "north america": "N. America",
     "united kingdom": "UK"
   });
+  const LOCATION_OVERRIDES = Object.freeze({
+    abomination81: "Xanadu"
+  });
   const RESERVED_PROFILE_PATHS = new Set([
     "compose",
     "explore",
@@ -64,6 +67,11 @@
     return Boolean(normalizedLeft && normalizedRight && normalizedLeft === normalizedRight);
   }
 
+  function locationOverride(value) {
+    const username = normalizeUsername(value);
+    return username ? LOCATION_OVERRIDES[username] || null : null;
+  }
+
   function normalizeLocation(value) {
     if (typeof value !== "string") return null;
     const normalized = value.replace(/\s+/g, " ").trim();
@@ -111,6 +119,7 @@
     BRIDGE_SOURCE,
     DEFAULT_ACCENT_COLOR,
     displayLocation,
+    locationOverride,
     normalizeAccentColor,
     normalizeLocation,
     normalizeUsername,

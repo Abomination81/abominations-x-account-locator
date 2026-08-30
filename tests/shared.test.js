@@ -27,6 +27,11 @@ test("matches the signed-in account case-insensitively", () => {
   assert.equal(shared.sameUsername("Abomination81", "someone_else"), false);
   assert.equal(shared.sameUsername(null, "abomination81"), false);
 });
+test("uses the Xanadu location override only for Abomination81", () => {
+  assert.equal(shared.locationOverride("Abomination81"), "Xanadu");
+  assert.equal(shared.locationOverride("@ABOMINATION81"), "Xanadu");
+  assert.equal(shared.locationOverride("someone_else"), null);
+});
 test("applies location abbreviations", () => {
   assert.equal(shared.displayLocation("United States"), "USA");
   assert.equal(shared.displayLocation("North America"), "N. America");

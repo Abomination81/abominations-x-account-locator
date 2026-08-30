@@ -217,7 +217,9 @@
     badge.href = `/${encodeURIComponent(username)}/about`;
     badge.textContent = shared.displayLocation(item.location);
     badge.style.setProperty("--xal-accent", shared.normalizeAccentColor(settings.badgeColor));
-    badge.title = `X says @${username}'s account is based in ${item.location}.${note} Not proof of nationality or identity. Built by Abomination81.`;
+    badge.title = item.override
+      ? `@${username}'s extension location is ${item.location}. Custom label by Abomination81.`
+      : `X says @${username}'s account is based in ${item.location}.${note} Not proof of nationality or identity. Built by Abomination81.`;
     badge.setAttribute("aria-label", badge.title);
     badge.toggleAttribute("data-location-uncertain", uncertain);
     surface.dataset.xalLocation = item.location;
@@ -256,6 +258,16 @@
     surface.dataset.xalUsername = username;
     surface.classList.toggle("xal-quote-surface", isQuote);
     registerSurface(username, surface);
+
+    const overrideLocation = shared.locationOverride(username);
+    if (overrideLocation) {
+      showBadge(surface, username, {
+        location: overrideLocation,
+        accurate: null,
+        override: true
+      });
+      return;
+    }
 
     const cached = validCache(username);
     if (cached) {

@@ -31,9 +31,15 @@ test("skips location lookups and badges for the signed-in account", () => {
   assert.match(content, /shared\.sameUsername\(username, ownUsername\)/);
   assert.match(content, /shared\.sameUsername\(request\.username, ownUsername\)/);
 });
+test("renders the Abomination81 override without a location lookup", () => {
+  const content = read("content.js");
+  assert.match(content, /const overrideLocation = shared\.locationOverride\(username\)/);
+  assert.match(content, /override: true/);
+  assert.ok(content.indexOf("const overrideLocation") < content.indexOf("const cached = validCache"));
+});
 test("manifest and icons are valid", () => {
   const manifest = JSON.parse(read("manifest.json"));
-  assert.equal(manifest.version, "0.6.0");
+  assert.equal(manifest.version, "0.7.0");
   for (const icon of Object.values(manifest.icons)) {
     assert.ok(fs.existsSync(path.join(root, icon)), `${icon} should exist`);
   }
