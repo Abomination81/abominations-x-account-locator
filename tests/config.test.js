@@ -32,7 +32,10 @@ test("supports follower and following user rows without affecting suggestions", 
   assert.match(read("styles.css"), /\.xal-user-cell-surface \.xal-user-cell-badge/);
   assert.match(content, /function badgeHostForSurface\(surface\)/);
   assert.match(content, /shared\.userCellDisplayNameIndex\(/);
-  assert.match(read("styles.css"), /\.xal-user-cell-name-row/);
+  assert.match(content, /displayNameLink\?\.firstElementChild/);
+  assert.match(content, /document\.createElement\(isUserCell \? "span" : "a"\)/);
+  assert.match(read("styles.css"), /\.xal-user-cell-identity-line/);
+  assert.match(read("styles.css"), /align-self: center/);
 });
 test("skips location lookups and badges for the signed-in account", () => {
   const content = read("content.js");
@@ -49,7 +52,7 @@ test("renders the Abomination81 override without a location lookup", () => {
 });
 test("manifest and icons are valid", () => {
   const manifest = JSON.parse(read("manifest.json"));
-  assert.equal(manifest.version, "0.8.1");
+  assert.equal(manifest.version, "0.8.2");
   for (const icon of Object.values(manifest.icons)) {
     assert.ok(fs.existsSync(path.join(root, icon)), `${icon} should exist`);
   }

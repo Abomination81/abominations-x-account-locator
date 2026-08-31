@@ -228,7 +228,7 @@
     const badge = badgeForSurface(surface);
     const host = badge?.parentElement;
     badge?.remove();
-    host?.classList.remove("xal-user-cell-name-row");
+    host?.classList.remove("xal-user-cell-identity-line");
   }
 
   function badgeHostForSurface(surface) {
@@ -241,9 +241,18 @@
       username
     );
     const displayNameLink = links[displayNameIndex];
-    const host = displayNameLink?.parentElement || surface;
-    if (host !== surface) host.classList.add("xal-user-cell-name-row");
+    const host = displayNameLink?.firstElementChild || displayNameLink || surface;
+    if (host !== surface) host.classList.add("xal-user-cell-identity-line");
     return host;
+  }
+
+  function activateUserCellBadge(event) {
+    if (event.type === "keydown" && event.key !== "Enter" && event.key !== " ") return;
+    const href = event.currentTarget.dataset.xalHref;
+    if (!href) return;
+    event.preventDefault();
+    event.stopPropagation();
+    location.assign(href);
   }
 
   function showBadge(surface, username, item) {
@@ -251,17 +260,26 @@
     const isUserCell = surface.matches(USER_CELL_SELECTOR);
     let badge = badgeForSurface(surface);
     if (!badge) {
-      badge = document.createElement("a");
+      badge = document.createElement(isUserCell ? "span" : "a");
       badge.className = "xal-badge";
       badge.classList.toggle("xal-user-cell-badge", isUserCell);
-      badge.target = "_self";
-      badge.rel = "nofollow";
-      badge.addEventListener("click", (event) => event.stopPropagation());
+      if (isUserCell) {
+        badge.setAttribute("role", "link");
+        badge.tabIndex = 0;
+        badge.addEventListener("click", activateUserCellBadge);
+        badge.addEventListener("keydown", activateUserCellBadge);
+      } else {
+        badge.target = "_self";
+        badge.rel = "nofollow";
+        badge.addEventListener("click", (event) => event.stopPropagation());
+      }
       badgeHostForSurface(surface).appendChild(badge);
     }
     const uncertain = item.accurate === false;
     const note = uncertain ? " X marks this location as potentially inaccurate." : "";
-    badge.href = `/${encodeURIComponent(username)}/about`;
+    const aboutHref = `/${encodeURIComponent(username)}/about`;
+    if (isUserCell) badge.dataset.xalHref = aboutHref;
+    else badge.href = aboutHref;
     badge.textContent = shared.displayLocation(item.location);
     badge.style.setProperty("--xal-accent", shared.normalizeAccentColor(settings.badgeColor));
     badge.title = item.override
