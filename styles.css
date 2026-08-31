@@ -5,7 +5,7 @@
 
 article[data-testid="tweet"],
 .xal-quote-surface,
-.xal-user-cell-surface {
+[data-testid="UserCell"] {
   position: relative;
 }
 
@@ -51,7 +51,7 @@ article[data-testid="tweet"],
   line-height: 15px;
 }
 
-.xal-user-cell-surface .xal-user-cell-badge {
+[data-testid="UserCell"] .xal-user-cell-badge {
   position: static;
   display: inline-flex;
   flex: 0 0 auto;

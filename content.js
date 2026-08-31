@@ -45,6 +45,14 @@
   const storageGet = (keys) => new Promise((resolve) => chrome.storage.local.get(keys, resolve));
   const storageSet = (values) => new Promise((resolve) => chrome.storage.local.set(values, resolve));
 
+  function publishRuntimeState() {
+    if (!document.documentElement) return;
+    document.documentElement.dataset.xalLookupStatus = performanceStats.status;
+    document.documentElement.dataset.xalQueueDepth = String(queue.length);
+    document.documentElement.dataset.xalActiveRequests = String(activeRequests);
+    document.documentElement.dataset.xalPauseUntil = pauseUntil ? String(pauseUntil) : "";
+  }
+
   function scheduleCacheSave() {
     clearTimeout(cacheSaveTimer);
     cacheSaveTimer = setTimeout(() => {
@@ -58,6 +66,7 @@
   }
 
   function scheduleStatsSave() {
+    publishRuntimeState();
     clearTimeout(statsSaveTimer);
     statsSaveTimer = setTimeout(() => void storageSet({ performanceStats }), 500);
   }
@@ -363,6 +372,7 @@
     if (queuedUsers.has(username) || pendingHasUsername(username)) return;
     queuedUsers.add(username);
     front ? queue.unshift(username) : queue.push(username);
+    publishRuntimeState();
     pumpQueue();
   }
 
@@ -377,6 +387,7 @@
   }
 
   function pumpQueue() {
+    publishRuntimeState();
     if (!settings.enabled || activeRequests >= MAX_CONCURRENT || !queue.length) return;
     if (Date.now() < pauseUntil) {
       setStatus("paused", pauseUntil);
@@ -548,6 +559,7 @@
     cache = stored.locationCache || Object.create(null);
     pauseUntil = Number(stored.pauseUntil || 0);
     performanceStats = { ...performanceStats, ...(stored.performanceStats || {}) };
+    publishRuntimeState();
     ownUsername = detectOwnUsername();
     scan();
     mutationObserver.observe(document.documentElement, {
