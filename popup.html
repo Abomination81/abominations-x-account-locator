@@ -13,13 +13,29 @@
         <div><h1>Abominations X account locator</h1><p>Built by Abomination81</p></div>
       </header>
       <label class="setting"><span>Show locations on posts</span><input id="enabled" type="checkbox" /></label>
+      <p class="rate-warning"><strong>Follower-list warning:</strong> Scanning many followers or following accounts can quickly use X’s location-lookup allowance. New locations will pause if X applies a temporary limit; cached locations remain visible.</p>
       <div class="setting">
-        <label for="badge-color">Badge color</label>
+        <label for="badge-color">Default badge color</label>
         <div class="color-controls">
           <input id="badge-color" type="color" value="#39ff14" />
           <button id="reset-color" class="reset-color" type="button">Reset</button>
         </div>
       </div>
+      <section class="country-colors" aria-labelledby="country-colors-title">
+        <div class="section-title">
+          <h2 id="country-colors-title">Country colors</h2>
+          <p>South Asia, Southeast Asia, and Africa default to red. Your rules override those defaults.</p>
+        </div>
+        <form id="country-color-form" class="country-color-form">
+          <label class="sr-only" for="country-name">Country or region</label>
+          <input id="country-name" list="country-options" maxlength="100" placeholder="Country or region" required />
+          <datalist id="country-options"></datalist>
+          <label class="sr-only" for="country-color">Country color</label>
+          <input id="country-color" type="color" value="#ff0000" />
+          <button type="submit">Add</button>
+        </form>
+        <div id="country-color-list" class="country-color-list" aria-live="polite"></div>
+      </section>
       <div class="stats"><span>Lookup status</span><strong id="lookup-status">—</strong></div>
       <div class="stats"><span>Average X lookup</span><strong id="average-lookup">—</strong></div>
       <div class="stats"><span>Cached accounts</span><strong id="cache-count">—</strong></div>

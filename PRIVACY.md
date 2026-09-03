@@ -24,4 +24,6 @@ The extension does not send usernames, browsing history, credentials, settings, 
 
 Requests needed for the feature are sent to X and X's asset domain through the user's existing X session. Use of X remains subject to X's own terms and privacy policy.
 
+The extension performs these requests in Chrome's isolated extension world. It does not replace X's global `fetch` or `XMLHttpRequest` functions, capture authorization headers from X page requests, or expose a page-visible command bridge.
+
 This project is independent and is not affiliated with X Corp.

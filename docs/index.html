@@ -15,10 +15,11 @@
     <header class="hero">
       <img class="hero-art" src="assets/marquee-promo-1400x560.png" alt="Abominations X Account Locator: see X's public account location at a glance">
       <div class="hero-actions" aria-label="Primary actions">
-        <a class="button button-primary" href="downloads/abominations-x-account-locator-v0.8.3.zip" download>Download version 0.8.3</a>
+        <a class="button button-primary" href="downloads/abominations-x-account-locator-v0.9.1.zip" download>Download version 0.9.1</a>
         <a class="button" href="https://github.com/Abomination81/abominations-x-account-locator">View source on GitHub</a>
       </div>
       <p class="download-note">Free manual Chrome installation. No Chrome Web Store account or publisher email is required.</p>
+      <p class="download-note">SHA-256: <code>1b6796acd5e2917ad0f3b40248af10d34117f8115f2e737ba6e048d8b40be6c2</code> · <a href="downloads/SHA256SUMS.txt">checksum file</a></p>
     </header>
 
     <main>
@@ -26,14 +27,16 @@
         <div>
           <p class="eyebrow">Built by Abomination81</p>
           <h1 id="what-it-does">See X's own account-location label while you scroll</h1>
-          <p class="lede">The extension places X's public <strong>Account based in</strong> disclosure on ordinary and quoted posts. Choose any badge color; Abomination green is the default.</p>
+          <p class="lede">The extension places X's public <strong>Account based in</strong> disclosure on posts and follower lists. Set colors by country or region; South Asia, Southeast Asia, and Africa default to red.</p>
           <ul class="feature-list">
             <li>Regular and quoted posts</li>
             <li>Follower-list badges stay centered after the full name, checkmark, lock, and emojis</li>
             <li>Your own account is automatically excluded</li>
             <li><code>@Abomination81</code> appears as <code>XANADU</code> for everyone else</li>
-            <li>Custom badge colors</li>
+            <li>Custom country and region colors</li>
+            <li>Hardened isolated-world lookups with no page-visible message bridge</li>
             <li>Local caching for smoother scrolling</li>
+            <li>Fast lookups that pause only when X applies its limit</li>
             <li>USA, N. America, and UK abbreviations</li>
           </ul>
         </div>
@@ -88,11 +91,13 @@
           <h2>Use the popup</h2>
           <p>Pin the extension from Chrome's puzzle-piece menu, then click its green crosshair icon to:</p>
           <ul>
-            <li>Choose a badge color</li>
+            <li>Choose a default badge color</li>
+            <li>Add colors for individual countries or whole regions</li>
             <li>Pause or resume lookups</li>
             <li>View lookup and rate-limit status</li>
             <li>Clear the local cache</li>
           </ul>
+          <p><strong>Follower-list warning:</strong> Scanning many follower or following rows can quickly use X's location-lookup allowance. If X applies a temporary limit, new locations pause until X resets it; cached locations remain visible.</p>
         </article>
         <article class="panel">
           <h2>Privacy</h2>

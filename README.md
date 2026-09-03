@@ -2,7 +2,7 @@
 
 **Built by [Abomination81](https://github.com/Abomination81).**
 
-Abominations X Account Locator places X's public **Account based in** disclosure directly on ordinary posts, quoted posts, and follower/following lists. The badge color is customizable and defaults to Abomination green (`#39ff14`). Version 0.8.3 anchors follower-list badges inside X's display-name line after emojis, verification badges, and lock icons, keeping them centered above the handle row even when X recycles the row. It excludes the signed-in account and gives `@Abomination81` the extension-only custom location `XANADU` for everyone else.
+Abominations X Account Locator places X's public **Account based in** disclosure directly on ordinary posts, quoted posts, and follower/following lists. Version 0.9.1 adds country and region color rules, red defaults for South Asia, Southeast Asia, and Africa, fast lookups, and a hardened isolated-world design. It excludes the signed-in account and gives `@Abomination81` the extension-only custom location `XANADU` for everyone else.
 
 ![Abominations X Account Locator banner](docs/assets/marquee-promo-1400x560.png)
 
@@ -14,7 +14,7 @@ The easiest instructions and download are on the public installation page:
 
 Quick version:
 
-1. Download and unzip `abominations-x-account-locator-v0.8.3.zip` from the installation page.
+1. Download and unzip `abominations-x-account-locator-v0.9.1.zip` from the installation page.
 2. Open `chrome://extensions` in Chrome.
 3. Turn on **Developer mode** in the upper-right corner.
 4. Click **Load unpacked**.
@@ -22,6 +22,8 @@ Quick version:
 6. Open or refresh [x.com](https://x.com/) while signed in.
 
 Keep the unzipped folder on your computer after installation. Chrome loads the extension from that folder.
+
+Release ZIP SHA-256: `1b6796acd5e2917ad0f3b40248af10d34117f8115f2e737ba6e048d8b40be6c2` ([checksum file](docs/downloads/SHA256SUMS.txt)).
 
 ## Features
 
@@ -31,8 +33,11 @@ Keep the unzipped folder on your computer after installation. Chrome loads the e
 - Does not request or display the signed-in account's own location.
 - Displays `XANADU` for `@Abomination81` as a transparent extension-only custom label.
 - Abbreviates `United States` to `USA`, `North America` to `N. America`, and `United Kingdom` to `UK`.
-- Lets you choose any badge color, defaulting to Abomination green.
+- Lets you choose colors for individual countries or whole regions.
+- Defaults South Asian, Southeast Asian, and African locations to red; other locations default to Abomination green.
 - Caches results locally for faster scrolling.
+- Loads new locations quickly with bounded concurrency.
+- Honors X's actual temporary limit and reset response.
 - Includes a pause switch, status display, and clear-cache button.
 
 ![The extension showing location badges on X](docs/assets/screenshot-marketing-1280x800.png)
@@ -42,6 +47,10 @@ Keep the unzipped folder on your computer after installation. Chrome loads the e
 X says its account-location field is inferred from aggregated IP addresses. It may be inaccurate and is not proof of nationality, identity, physical presence, or who controls an account.
 
 The extension has no developer-operated server, advertising, analytics, or data brokerage. It communicates with X and X's asset domain through the user's existing X session to retrieve X's own public account-location result. Settings and the bounded lookup cache remain in Chrome's local extension storage.
+
+Version 0.9.1 performs lookups inside Chrome's isolated extension world. It does not inject a main-world agent, replace X's global network functions, capture page authorization headers, or expose a page-visible messaging bridge.
+
+**Follower-list warning:** Scanning many follower or following rows can quickly use X's location-lookup allowance. If X applies a temporary limit, new uncached locations pause until X's reset; cached locations remain visible.
 
 ## Updating
 

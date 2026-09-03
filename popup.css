@@ -5,21 +5,36 @@
   --black: #050805;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
-body { width: 310px; margin: 0; color: var(--green-soft); background: var(--black); }
+body { width: 350px; margin: 0; color: var(--green-soft); background: var(--black); }
 main { padding: 16px; border: 1px solid color-mix(in srgb, var(--green) 38%, transparent); }
 header { display: flex; gap: 11px; align-items: center; margin-bottom: 16px; }
 header img { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--green) 55%, transparent)); }
-h1, p { margin: 0; }
+h1, h2, p { margin: 0; }
 h1 { color: var(--green); font-size: 15px; line-height: 19px; }
 header p, .note { color: color-mix(in srgb, var(--green-soft) 66%, transparent); font-size: 11px; line-height: 15px; }
+.rate-warning { margin: 10px 0; padding: 9px 10px; border: 1px solid #ff3b30; border-radius: 8px; background: color-mix(in srgb, #ff3b30 12%, transparent); color: #ffb3ad; font-size: 11px; line-height: 15px; }
+.rate-warning strong { color: #ff5147; }
 .setting, .stats { display: flex; align-items: center; justify-content: space-between; min-height: 40px; border-top: 1px solid color-mix(in srgb, var(--green) 23%, transparent); font-size: 13px; }
 #enabled { width: 18px; height: 18px; accent-color: var(--green); }
 .color-controls { display: flex; gap: 7px; align-items: center; }
-#badge-color { width: 34px; height: 26px; padding: 0; border: 1px solid var(--green); border-radius: 6px; background: transparent; cursor: pointer; }
+#badge-color, #country-color, .country-color-rule input[type="color"] { width: 34px; height: 26px; padding: 0; border: 1px solid var(--green); border-radius: 6px; background: transparent; cursor: pointer; }
 button { border: 1px solid var(--green); border-radius: 999px; color: var(--green); background: transparent; font: inherit; font-weight: 700; cursor: pointer; }
 button:hover { color: var(--black); background: var(--green); }
 .reset-color { padding: 4px 8px; font-size: 10px; }
 .wide-button { width: 100%; margin: 10px 0 12px; padding: 8px 10px; }
 .stats strong { max-width: 145px; color: var(--green); font-size: 11px; text-align: right; }
+.country-colors { padding: 10px 0 12px; border-top: 1px solid color-mix(in srgb, var(--green) 23%, transparent); }
+.section-title { margin-bottom: 8px; }
+.section-title h2 { color: var(--green); font-size: 13px; }
+.section-title p, .empty-rules { margin-top: 2px; color: color-mix(in srgb, var(--green-soft) 62%, transparent); font-size: 10px; line-height: 14px; }
+.country-color-form { display: grid; grid-template-columns: minmax(0, 1fr) 36px auto; gap: 7px; align-items: center; }
+#country-name { min-width: 0; height: 30px; padding: 0 9px; border: 1px solid color-mix(in srgb, var(--green) 58%, transparent); border-radius: 7px; color: var(--green-soft); background: color-mix(in srgb, var(--green) 5%, var(--black)); font: inherit; }
+#country-name:focus { border-color: var(--green); outline: none; box-shadow: 0 0 7px color-mix(in srgb, var(--green) 24%, transparent); }
+.country-color-form button { height: 30px; padding: 0 11px; font-size: 11px; }
+.country-color-list { display: grid; gap: 6px; margin-top: 9px; }
+.country-color-rule { display: grid; grid-template-columns: minmax(0, 1fr) 36px auto; gap: 7px; align-items: center; min-height: 30px; }
+.country-color-rule span { overflow: hidden; color: var(--green-soft); font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.remove-rule { padding: 4px 7px; border-color: color-mix(in srgb, var(--green) 48%, transparent); font-size: 9px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 footer { margin-top: 14px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--green) 23%, transparent); color: color-mix(in srgb, var(--green) 70%, transparent); font-size: 9px; letter-spacing: .15em; text-align: center; }
 footer strong { color: var(--green); }

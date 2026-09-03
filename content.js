@@ -9,21 +9,32 @@
   const NEGATIVE_TTL = 12 * 60 * 60 * 1000;
   const MAX_CACHE_ENTRIES = 2000;
   const MAX_CONCURRENT = 3;
-  const BASE_SPACING = 350;
-  const LOW_BUDGET_SPACING = 900;
+  const REQUEST_SPACING = 350;
+  const LOOKUP_TIMEOUT_MS = 10_000;
+  const DISCOVERY_TIMEOUT_MS = 5_000;
+  const FALLBACK_BEARER_TOKEN =
+    "AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA";
+  const FALLBACK_QUERY_ID = "XRqGa7EeokUU5kppkh13EA";
+  const ABOUT_BUNDLE_URL =
+    "https://abs.twimg.com/responsive-web/client-web/shared~bundle.UserAbout~loader.AboutAccount.3b6723aa.js";
   const PREFETCH_MARGIN = 300;
   const TWEET_SELECTOR = 'article[data-testid="tweet"]';
   const QUOTE_SELECTOR = '[data-testid="quoteTweet"]';
   const USER_CELL_SELECTOR = '[data-testid="UserCell"]';
-  const DEFAULT_SETTINGS = { enabled: true, badgeColor: shared.DEFAULT_ACCENT_COLOR };
+  const DEFAULT_SETTINGS = {
+    enabled: true,
+    badgeColor: shared.DEFAULT_ACCENT_COLOR,
+    locationColors: Object.create(null)
+  };
 
   let settings = { ...DEFAULT_SETTINGS };
   let cache = Object.create(null);
   let pauseUntil = 0;
+  let pauseReason = null;
   let activeRequests = 0;
-  let currentSpacing = BASE_SPACING;
   let lastRequestAt = 0;
-  let sequence = 0;
+  let aboutQueryId = null;
+  let bundleLookup = null;
   let cacheSaveTimer = null;
   let statsSaveTimer = null;
   let refreshFrame = null;
@@ -38,7 +49,7 @@
   };
   const queue = [];
   const queuedUsers = new Set();
-  const pending = new Map();
+  const activeUsers = new Set();
   const surfacesByUsername = new Map();
   const dirtySurfaces = new Set();
 
@@ -47,10 +58,15 @@
 
   function publishRuntimeState() {
     if (!document.documentElement) return;
+    document.documentElement.dataset.xalVersion = chrome.runtime.getManifest().version;
+    document.documentElement.dataset.xalSecurityModel = "isolated-v1";
     document.documentElement.dataset.xalLookupStatus = performanceStats.status;
     document.documentElement.dataset.xalQueueDepth = String(queue.length);
     document.documentElement.dataset.xalActiveRequests = String(activeRequests);
     document.documentElement.dataset.xalPauseUntil = pauseUntil ? String(pauseUntil) : "";
+    document.documentElement.dataset.xalPauseReason = pauseReason || "";
+    document.documentElement.dataset.xalRateMode = "fast-server-controlled";
+    document.documentElement.dataset.xalSpacing = String(REQUEST_SPACING);
   }
 
   function scheduleCacheSave() {
@@ -87,6 +103,101 @@
       )
     };
     scheduleStatsSave();
+  }
+
+  function csrfToken() {
+    const match = document.cookie.match(/(?:^|;\s*)ct0=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+
+  async function discoverQueryId() {
+    if (aboutQueryId) return aboutQueryId;
+    if (bundleLookup) return bundleLookup;
+    bundleLookup = (async () => {
+      const resources = performance
+        .getEntriesByType("resource")
+        .map((entry) => entry.name)
+        .filter((url) => /AboutAccount.*\.js(?:\?|$)/.test(url));
+      for (const url of [...new Set([...resources, ABOUT_BUNDLE_URL])]) {
+        try {
+          const response = await fetch(url, {
+            credentials: "omit",
+            signal: AbortSignal.timeout(DISCOVERY_TIMEOUT_MS)
+          });
+          if (!response.ok) continue;
+          const id = shared.parseAboutQueryId(await response.text());
+          if (id) return (aboutQueryId = id);
+        } catch {
+          // Fall back to the last verified public X query ID.
+        }
+      }
+      return FALLBACK_QUERY_ID;
+    })().finally(() => (bundleLookup = null));
+    return bundleLookup;
+  }
+
+  function rateInfo(response) {
+    return shared.normalizeRateInfo(
+      response.headers.get("x-rate-limit-remaining"),
+      response.headers.get("x-rate-limit-reset"),
+      response.headers.get("retry-after")
+    );
+  }
+
+  async function lookupAccount(username, allowQueryRefresh = true) {
+    const normalizedUsername = shared.normalizeUsername(username);
+    if (!normalizedUsername) return { ok: false, error: "invalid-username" };
+    const csrf = csrfToken();
+    if (!csrf) return { ok: false, error: "not-signed-in" };
+
+    const queryId = aboutQueryId || FALLBACK_QUERY_ID;
+    const variables = encodeURIComponent(JSON.stringify({ screenName: normalizedUsername }));
+    const url = `${location.origin}/i/api/graphql/${queryId}/AboutAccountQuery?variables=${variables}`;
+    const headers = {
+      accept: "*/*",
+      authorization: `Bearer ${FALLBACK_BEARER_TOKEN}`,
+      "content-type": "application/json",
+      "x-csrf-token": csrf,
+      "x-twitter-active-user": "yes",
+      "x-twitter-auth-type": "OAuth2Session",
+      "x-twitter-client-language": document.documentElement.lang || "en"
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+        headers,
+        signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS)
+      });
+      const rate = rateInfo(response);
+      if (response.status === 429) {
+        return { ok: false, error: "rate-limited", ...rate };
+      }
+      if (response.status === 401 || response.status === 403) {
+        return { ok: false, error: "not-authorized", ...rate };
+      }
+      if (allowQueryRefresh && (response.status === 400 || response.status === 404)) {
+        const discoveredId = await discoverQueryId();
+        if (discoveredId && discoveredId !== queryId) {
+          aboutQueryId = discoveredId;
+          return lookupAccount(normalizedUsername, false);
+        }
+      }
+      if (!response.ok) {
+        return { ok: false, error: `http-${response.status}`, ...rate };
+      }
+      return {
+        ok: true,
+        ...shared.parseAboutPayload(await response.json()),
+        ...rate
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error?.name === "TimeoutError" ? "timeout" : "network-error"
+      };
+    }
   }
 
   function isRelevant(surface) {
@@ -218,6 +329,19 @@
     return relevant;
   }
 
+  function lookupPriority(username) {
+    const surfaces = surfacesByUsername.get(username);
+    if (!surfaces) return -1;
+    let priority = -1;
+    for (const surface of surfaces) {
+      if (!isRelevant(surface)) continue;
+      if (surface.matches(USER_CELL_SELECTOR)) priority = Math.max(priority, 0);
+      else if (surface.matches(QUOTE_SELECTOR)) priority = Math.max(priority, 1);
+      else priority = Math.max(priority, 2);
+    }
+    return priority;
+  }
+
   function validCache(username) {
     const item = cache[username];
     if (!item) return null;
@@ -290,7 +414,11 @@
     if (isUserCell) badge.dataset.xalHref = aboutHref;
     else badge.href = aboutHref;
     badge.textContent = shared.displayLocation(item.location);
-    badge.style.setProperty("--xal-accent", shared.normalizeAccentColor(settings.badgeColor));
+    badge.dataset.xalLocation = item.location;
+    badge.style.setProperty(
+      "--xal-accent",
+      shared.accentColorForLocation(item.location, settings.locationColors, settings.badgeColor)
+    );
     badge.title = item.override
       ? `@${username}'s extension location is ${item.location}. Custom label by Abomination81.`
       : `X says @${username}'s account is based in ${item.location}.${note} Not proof of nationality or identity. Built by Abomination81.`;
@@ -358,18 +486,14 @@
         scheduleStatsSave();
       }
       showBadge(surface, username, cached);
-    } else if (!queuedUsers.has(username) && !pendingHasUsername(username)) {
+    } else if (!queuedUsers.has(username) && !activeUsers.has(username)) {
       enqueue(username);
     }
   }
 
-  function pendingHasUsername(username) {
-    return [...pending.values()].some((request) => request.username === username);
-  }
-
   function enqueue(username, front = false) {
     if (shared.sameUsername(username, ownUsername)) return;
-    if (queuedUsers.has(username) || pendingHasUsername(username)) return;
+    if (queuedUsers.has(username) || activeUsers.has(username)) return;
     queuedUsers.add(username);
     front ? queue.unshift(username) : queue.push(username);
     publishRuntimeState();
@@ -377,96 +501,90 @@
   }
 
   function nextRelevantUsername() {
-    while (queue.length) {
-      const username = queue.shift();
-      queuedUsers.delete(username);
-      if (shared.sameUsername(username, ownUsername)) continue;
-      if (hasRelevantSurface(username)) return username;
+    let bestIndex = -1;
+    let bestPriority = -1;
+    for (let index = queue.length - 1; index >= 0; index -= 1) {
+      const username = queue[index];
+      if (shared.sameUsername(username, ownUsername) || !hasRelevantSurface(username)) {
+        queue.splice(index, 1);
+        queuedUsers.delete(username);
+        continue;
+      }
+      const priority = lookupPriority(username);
+      if (priority > bestPriority) {
+        bestPriority = priority;
+        bestIndex = index;
+      }
     }
-    return null;
+    if (bestIndex < 0) return null;
+    const [username] = queue.splice(bestIndex, 1);
+    queuedUsers.delete(username);
+    return username;
   }
 
   function pumpQueue() {
     publishRuntimeState();
     if (!settings.enabled || activeRequests >= MAX_CONCURRENT || !queue.length) return;
+    if (pauseUntil && Date.now() >= pauseUntil) {
+      pauseUntil = 0;
+      pauseReason = null;
+      void storageSet({ pauseUntil: 0, pauseReason: null });
+    }
     if (Date.now() < pauseUntil) {
       setStatus("paused", pauseUntil);
       setTimeout(pumpQueue, Math.min(pauseUntil - Date.now(), 60_000));
       return;
     }
     if (performanceStats.status === "paused") setStatus("active");
-    const wait = Math.max(0, currentSpacing - (Date.now() - lastRequestAt));
+    const wait = Math.max(0, REQUEST_SPACING - (Date.now() - lastRequestAt));
     if (wait) return void setTimeout(pumpQueue, wait);
 
     const username = nextRelevantUsername();
     if (!username) return;
-    const requestId = `${Date.now().toString(36)}-${(++sequence).toString(36)}`;
-    const timeout = setTimeout(() => {
-      const request = finishRequest(requestId);
-      if (request) setStatus("timeout");
-      pumpQueue();
-    }, 15_000);
-    pending.set(requestId, { username, timeout, startedAt: performance.now() });
+    const startedAt = performance.now();
+    activeUsers.add(username);
     activeRequests += 1;
     lastRequestAt = Date.now();
-    globalThis.postMessage(
-      { source: shared.BRIDGE_SOURCE, type: "lookup", requestId, username },
-      location.origin
+    void lookupAccount(username).then(
+      (result) => finishLookup(username, startedAt, result),
+      () => finishLookup(username, startedAt, { ok: false, error: "network-error" })
     );
-    setTimeout(pumpQueue, currentSpacing);
+    setTimeout(pumpQueue, REQUEST_SPACING);
   }
 
-  function finishRequest(requestId) {
-    const request = pending.get(requestId);
-    if (!request) return null;
-    clearTimeout(request.timeout);
-    pending.delete(requestId);
+  function finishLookup(username, startedAt, result) {
+    activeUsers.delete(username);
     activeRequests = Math.max(0, activeRequests - 1);
-    recordDuration(performance.now() - request.startedAt);
-    return request;
-  }
-
-  globalThis.addEventListener("message", (event) => {
-    if (
-      event.source !== globalThis ||
-      event.origin !== location.origin ||
-      event.data?.source !== shared.BRIDGE_SOURCE ||
-      event.data?.type !== "lookup-result"
-    ) return;
-
-    const request = finishRequest(String(event.data.requestId || ""));
-    if (!request) return;
-    if (shared.sameUsername(request.username, ownUsername)) return void pumpQueue();
-    const remaining = Number.isFinite(event.data.rateRemaining) ? event.data.rateRemaining : null;
-    currentSpacing = remaining !== null && remaining <= 10 ? LOW_BUDGET_SPACING : BASE_SPACING;
-
-    if (event.data.error === "rate-limited") {
-      pauseUntil = event.data.rateResetAt || Date.now() + 15 * 60 * 1000;
-      if (hasRelevantSurface(request.username)) enqueue(request.username, true);
-      void storageSet({ pauseUntil });
+    recordDuration(performance.now() - startedAt);
+    if (shared.sameUsername(username, ownUsername)) return void pumpQueue();
+    if (result.error === "rate-limited") {
+      pauseUntil = result.resetAt || result.retryAfterAt || Date.now() + 15 * 60 * 1000;
+      pauseReason = "server-429";
+      if (hasRelevantSurface(username)) enqueue(username, true);
+      void storageSet({ pauseUntil, pauseReason });
       setStatus("paused", pauseUntil);
       return void pumpQueue();
     }
-    if (event.data.error === "not-signed-in" || event.data.error === "not-authorized") {
+    if (result.error === "not-signed-in" || result.error === "not-authorized") {
       setStatus("authorization-needed");
       return void pumpQueue();
     }
-    if (!event.data.ok) {
-      setStatus(event.data.error || "request-failed");
+    if (!result.ok) {
+      setStatus(result.error || "request-failed");
       return void pumpQueue();
     }
 
     setStatus("active");
     const item = {
-      location: shared.normalizeLocation(event.data.location),
-      accurate: typeof event.data.accurate === "boolean" ? event.data.accurate : null,
+      location: shared.normalizeLocation(result.location),
+      accurate: typeof result.accurate === "boolean" ? result.accurate : null,
       fetchedAt: Date.now()
     };
-    cache[request.username] = item;
+    cache[username] = item;
     scheduleCacheSave();
-    applyToSurfaces(request.username, item);
+    applyToSurfaces(username, item);
     pumpQueue();
-  });
+  }
 
   function observeSurface(surface) {
     visibilityObserver.observe(surface);
@@ -536,11 +654,19 @@
     if (changes.settings) {
       settings = { ...DEFAULT_SETTINGS, ...changes.settings.newValue };
       settings.badgeColor = shared.normalizeAccentColor(settings.badgeColor);
+      settings.locationColors = shared.normalizeLocationColors(settings.locationColors);
       if (!settings.enabled) {
         document.querySelectorAll(".xal-badge").forEach((badge) => badge.remove());
       } else {
         document.querySelectorAll(".xal-badge").forEach((badge) => {
-          badge.style.setProperty("--xal-accent", settings.badgeColor);
+          badge.style.setProperty(
+            "--xal-accent",
+            shared.accentColorForLocation(
+              badge.dataset.xalLocation,
+              settings.locationColors,
+              settings.badgeColor
+            )
+          );
         });
         document
           .querySelectorAll(
@@ -553,15 +679,29 @@
   });
 
   async function start() {
-    const stored = await storageGet(["settings", "locationCache", "pauseUntil", "performanceStats"]);
+    const stored = await storageGet([
+      "settings",
+      "locationCache",
+      "pauseUntil",
+      "pauseReason",
+      "performanceStats"
+    ]);
     settings = { ...DEFAULT_SETTINGS, ...(stored.settings || {}) };
     settings.badgeColor = shared.normalizeAccentColor(settings.badgeColor);
+    settings.locationColors = shared.normalizeLocationColors(settings.locationColors);
     cache = stored.locationCache || Object.create(null);
-    pauseUntil = Number(stored.pauseUntil || 0);
+    const storedPauseUntil = Number(stored.pauseUntil || 0);
+    if (stored.pauseReason === "server-429" && storedPauseUntil > Date.now()) {
+      pauseUntil = storedPauseUntil;
+      pauseReason = "server-429";
+    } else if (storedPauseUntil || stored.pauseReason) {
+      void storageSet({ pauseUntil: 0, pauseReason: null });
+    }
     performanceStats = { ...performanceStats, ...(stored.performanceStats || {}) };
     publishRuntimeState();
     ownUsername = detectOwnUsername();
     scan();
+    void discoverQueryId();
     mutationObserver.observe(document.documentElement, {
       childList: true,
       subtree: true,

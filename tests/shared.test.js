@@ -69,6 +69,72 @@ test("validates badge colors", () => {
   assert.equal(shared.normalizeAccentColor("#A1B2C3"), "#a1b2c3");
   assert.equal(shared.normalizeAccentColor("red"), "#39ff14");
 });
+test("matches country color rules with common abbreviations and a default fallback", () => {
+  assert.equal(shared.locationColorKey("USA"), "united states");
+  assert.equal(shared.locationColorKey("U.K."), "united kingdom");
+  assert.equal(shared.locationColorKey(" India "), "india");
+  assert.deepEqual(
+    { ...shared.normalizeLocationColors({ USA: "#112233", India: "#FF8800", Bad: "orange" }) },
+    { "united states": "#112233", india: "#ff8800" }
+  );
+  assert.equal(
+    shared.accentColorForLocation("United States", { USA: "#112233" }, "#39ff14"),
+    "#112233"
+  );
+  assert.equal(shared.accentColorForLocation("Canada", {}, "#abcdef"), "#abcdef");
+});
+test("defaults South Asia, Southeast Asia, and African locations to red", () => {
+  for (const location of [
+    "India",
+    "South Asia",
+    "Pakistan",
+    "Bangladesh",
+    "Southeast Asia",
+    "SE Asia",
+    "Indonesia",
+    "Vietnam",
+    "Africa",
+    "Nigeria",
+    "Kenya",
+    "South Africa"
+  ]) {
+    assert.equal(shared.accentColorForLocation(location, {}, "#39ff14"), "#ff0000", location);
+  }
+  assert.equal(shared.accentColorForLocation("Japan", {}, "#39ff14"), "#39ff14");
+});
+test("country and region rules override built-in red defaults", () => {
+  assert.equal(
+    shared.accentColorForLocation("Nigeria", { Africa: "#112233" }, "#39ff14"),
+    "#112233"
+  );
+  assert.equal(
+    shared.accentColorForLocation("Nigeria", { Africa: "#112233", Nigeria: "#abcdef" }, "#39ff14"),
+    "#abcdef"
+  );
+  assert.equal(
+    shared.accentColorForLocation("Indonesia", { "SE Asia": "#445566" }, "#39ff14"),
+    "#445566"
+  );
+  assert.equal(
+    shared.accentColorForLocation("Pakistan", { "South Asia": "#778899" }, "#39ff14"),
+    "#778899"
+  );
+});
+test("clamps rate-limit headers before they control lookup scheduling", () => {
+  const now = 1_000_000;
+  assert.deepEqual(
+    { ...shared.normalizeRateInfo("12", String((now + 60_000) / 1000), "30", now) },
+    { remaining: 12, resetAt: now + 60_000, retryAfterAt: now + 30_000 }
+  );
+  assert.deepEqual(
+    { ...shared.normalizeRateInfo(null, null, null, now) },
+    { remaining: null, resetAt: null, retryAfterAt: null }
+  );
+  assert.deepEqual(
+    { ...shared.normalizeRateInfo("-1", "999999999999", "999999", now) },
+    { remaining: null, resetAt: null, retryAfterAt: null }
+  );
+});
 test("parses AboutAccount responses and query ids", () => {
   const result = shared.parseAboutPayload({ data: { user_result_by_screen_name: { result: {
     __typename: "User", about_profile: { account_based_in: " India ", location_accurate: false }
