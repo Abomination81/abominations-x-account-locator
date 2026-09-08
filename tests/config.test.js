@@ -82,7 +82,7 @@ test("renders the Abomination81 override without a location lookup", () => {
 });
 test("manifest and icons are valid", () => {
   const manifest = JSON.parse(read("manifest.json"));
-  assert.equal(manifest.version, "0.9.2");
+  assert.equal(manifest.version, "0.9.3");
   for (const icon of Object.values(manifest.icons)) {
     assert.ok(fs.existsSync(path.join(root, icon)), `${icon} should exist`);
   }

@@ -33,6 +33,7 @@ test("blocks exactly the requested handle and verifies X's response", async () =
   assert.equal(options.credentials, "include");
   assert.equal(options.redirect, "error");
   assert.equal(new URLSearchParams(options.body).get("screen_name"), "someone");
+  assert.equal(new URLSearchParams(options.body).get("include_blocking"), "true");
   assert.equal(controller.stateFor("viewer", "someone"), "blocked");
   await controller.block("someone");
   assert.equal(calls.length, 1);
@@ -100,6 +101,107 @@ test("honors blocking rate limits without automatically retrying writes", async 
   assert.equal(requests, 2);
 });
 
+const profileResult = (username = "someone", blocking = true) => ({ data: { user: { result: {
+  core: { screen_name: username }, relationship_perspectives: { blocking }
+} } } });
+
+test("accepts legacy and current user response shapes without an extra lookup", async () => {
+  for (const body of [
+    profileResult(),
+    { user: { legacy: { screen_name: "SomeOne", blocking: true } } }
+  ]) {
+    const calls = [];
+    const { controller } = client({ fetch: async (_url, options) => { calls.push(options.method); return response(body); } });
+    assert.equal((await controller.block("someone")).ok, true);
+    assert.deepEqual(calls, ["POST"]);
+  }
+});
+
+test("verifies missing confirmation with one uncached read, never a second block", async () => {
+  for (const body of [{ screen_name: "someone" }, {}, null]) {
+    const calls = [];
+    const { controller } = client({ fetch: async (url, options) => {
+      calls.push({ url, options });
+      return response(options.method === "POST" ? body : profileResult());
+    } });
+    assert.equal((await controller.block("someone")).ok, true);
+    assert.equal(controller.stateFor("viewer", "someone"), "blocked");
+    assert.deepEqual(calls.map((call) => call.options.method), ["POST", "GET"]);
+    const { url, options } = calls[1];
+    assert.equal(new URL(url).origin, "https://x.com");
+    assert.match(new URL(url).pathname, /\/UserByScreenName$/);
+    assert.deepEqual(JSON.parse(new URL(url).searchParams.get("variables")), { screen_name: "someone" });
+    assert.equal(options.credentials, "include");
+    assert.equal(options.redirect, "error");
+    assert.equal(options.cache, "no-store");
+    assert.equal(options.body, undefined);
+    await controller.block("someone");
+    assert.equal(calls.length, 2);
+  }
+});
+
+test("does not confuse blocked_by, another account, malformed flags, or errors with a confirmed block", async () => {
+  for (const body of [
+    profileResult("different"), profileResult("someone", false), profileResult("someone", "true"),
+    { screen_name: "someone", blocked_by: true },
+    { core: { screen_name: "someone" }, legacy: { screen_name: "different", blocking: true } },
+    { screen_name: "someone", blocking: true, relationship_perspectives: { blocking: false } },
+    { ...profileResult(), errors: [{ message: "Not available" }] }, {}, null
+  ]) {
+    const calls = [];
+    const { controller } = client({ fetch: async (_url, options) => {
+      calls.push(options.method);
+      return response(options.method === "POST" ? { screen_name: "someone" } : body);
+    } });
+    assert.equal((await controller.block("someone")).error, "unconfirmed");
+    assert.equal(controller.stateFor("viewer", "someone"), "idle");
+    assert.deepEqual(calls, ["POST", "GET"]);
+  }
+});
+
+test("verification failures remain inconclusive and do not retry or claim the block failed", async () => {
+  for (const verify of [
+    () => response({}, 403), () => response({}, 429), () => response({}, 500),
+    () => new Response("not JSON"),
+    () => { throw new TypeError("network"); },
+    () => { const error = new Error(); error.name = "TimeoutError"; throw error; }
+  ]) {
+    const calls = [];
+    const { controller } = client({ fetch: async (_url, options) => {
+      calls.push(options.method);
+      return options.method === "POST" ? response({ screen_name: "someone" }) : verify();
+    } });
+    assert.equal((await controller.block("someone")).error, "unconfirmed");
+    assert.equal(controller.stateFor("viewer", "someone"), "idle");
+    assert.deepEqual(calls, ["POST", "GET"]);
+  }
+});
+
+test("empty successful POST bodies can be verified, but explicit API errors cannot become success", async () => {
+  for (const postResponse of [new Response(null, { status: 204 }), new Response("not JSON")]) {
+    const { controller } = client({ fetch: async (_url, options) => options.method === "POST" ? postResponse : response(profileResult()) });
+    assert.equal((await controller.block("someone")).ok, true);
+  }
+  let calls = 0;
+  const { controller } = client({ fetch: async () => {
+    calls++;
+    return response({ screen_name: "someone", blocking: true, errors: [{ message: "Not allowed" }] });
+  } });
+  assert.equal((await controller.block("someone")).error, "request-failed");
+  assert.equal(calls, 1);
+});
+
+test("does not verify a mutation using a switched account's session", async () => {
+  let username = "viewer";
+  let calls = 0;
+  const { controller } = client({
+    getSession: () => ({ username, csrf: "test", bearer: "test" }),
+    fetch: async () => { calls++; username = "other_viewer"; return response({ screen_name: "someone" }); }
+  });
+  assert.equal((await controller.block("someone")).error, "unconfirmed");
+  assert.equal(calls, 1);
+});
+
 test("surfaces network and timeout failures and releases the pending action", async () => {
   for (const name of ["TimeoutError", "TypeError"]) {
     const { controller } = client({ fetch: async () => { const error = new Error(); error.name = name; throw error; } });
@@ -108,7 +210,7 @@ test("surfaces network and timeout failures and releases the pending action", as
   }
 });
 
-async function fixture(t, { pathname = "/home", html, send, paused = false }) {
+async function fixture(t, { pathname = "/home", html, send, verify, paused = false }) {
   const dom = new JSDOM(`<html><body><a data-testid="AppTabBar_Profile_Link" href="/viewer">Profile</a>${html}</body></html>`, {
     url: `https://x.com${pathname}`, runScripts: "outside-only", pretendToBeVisual: true
   });
@@ -146,6 +248,7 @@ async function fixture(t, { pathname = "/home", html, send, paused = false }) {
       posts.push({ url, options });
       return send ? send(url, options) : response({ screen_name: new URLSearchParams(options.body).get("screen_name"), blocking: true });
     }
+    if (String(url).includes("/UserByScreenName?")) return verify ? verify(url, options) : response({}, 404);
     return response({}, 404);
   };
   for (const name of ["shared.js", "account-actions.js", "content.js"]) window.eval(read(name));
@@ -222,4 +325,27 @@ test("DOM: blocking synchronizes other copies of the same account", async (t) =>
   await trustedClick(document.querySelector("#one button"));
   assert.equal(document.querySelector("#two button").getAttribute("aria-label"), "Blocked @someone");
   assert.equal(document.querySelector("#two button").disabled, true);
+});
+
+test("DOM: missing mutation flag shows success once the read confirms blocking", async (t) => {
+  const { document, posts, trustedClick } = await fixture(t, {
+    html: tweet("someone", "one") + tweet("someone", "two"),
+    send: async () => response({ screen_name: "someone" }),
+    verify: async () => response(profileResult())
+  });
+  await trustedClick(document.querySelector("#one button"));
+  assert.equal(posts.length, 1);
+  assert.equal(document.querySelector('[role="status"]').textContent, "Blocked @someone.");
+  assert.equal(document.querySelector("#two button").textContent, "✓");
+  assert.equal(document.querySelector("#two button").disabled, true);
+});
+
+test("DOM: an inconclusive check explains the account may already be blocked", async (t) => {
+  const { document, posts, trustedClick } = await fixture(t, {
+    html: tweet("someone", "post"), send: async () => response({ screen_name: "someone" })
+  });
+  await trustedClick(document.querySelector("button"));
+  assert.equal(posts.length, 1);
+  assert.match(document.querySelector('[role="status"]').textContent, /may already be blocked/);
+  assert.equal(document.querySelector("button").textContent, "×");
 });

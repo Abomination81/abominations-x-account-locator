@@ -15,11 +15,11 @@
     <header class="hero">
       <img class="hero-art" src="assets/marquee-promo-1400x560.png" alt="Abominations X Account Locator: see X's public account location at a glance">
       <div class="hero-actions" aria-label="Primary actions">
-        <a class="button button-primary" href="downloads/abominations-x-account-locator-v0.9.2.zip" download>Download version 0.9.2</a>
+        <a class="button button-primary" href="downloads/abominations-x-account-locator-v0.9.3.zip" download>Download version 0.9.3</a>
         <a class="button" href="https://github.com/Abomination81/abominations-x-account-locator">View source on GitHub</a>
       </div>
       <p class="download-note">Free manual Chrome installation. No Chrome Web Store account or publisher email is required.</p>
-      <p class="download-note">SHA-256: <code>f56efacf930fa917680b9c194750a86e063612bd7d60baddc7db0617f8861ae0</code> · <a href="downloads/SHA256SUMS.txt">checksum file</a></p>
+      <p class="download-note">SHA-256: <code>fee3468331fabfb4f640d49ce14962f29453dd2069b40eed169d985d381f79e6</code> · <a href="downloads/SHA256SUMS.txt">checksum file</a></p>
     </header>
 
     <main>
@@ -100,6 +100,7 @@
           </ul>
           <p><strong>Follower-list warning:</strong> Scanning many follower or following rows can quickly use X's location-lookup allowance. If X applies a temporary limit, new locations pause until X resets it; cached locations remain visible.</p>
           <p><strong>Quick block:</strong> Hover over a badge’s red × to check the handle, then click to block immediately. A checkmark means X confirmed the block. Clicking the country still opens its location details. You can unblock from that account’s X profile.</p>
+          <p><strong>New in 0.9.3:</strong> Fixes false block-confirmation errors by requesting X’s blocking status and making one read-only relationship check when a successful response is ambiguous. Verification never sends another block request.</p>
         </article>
         <article class="panel">
           <h2>Privacy</h2>

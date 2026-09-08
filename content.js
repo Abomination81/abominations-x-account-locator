@@ -460,7 +460,7 @@
       "rate-limited": "X temporarily limited blocking. Try again later.",
       "timeout": "X took too long to confirm the block. Check the account’s profile before trying again.",
       "network-error": "Could not confirm the block. Check your connection and the account’s profile.",
-      "unconfirmed": "X did not confirm the block. Check the account’s profile."
+      "unconfirmed": "The block request was sent, but its status could not be verified. The account may already be blocked; check its profile before retrying."
     };
     showBlockNotice(messages[result.error] || "Could not block this account. Try from its X profile.");
   }
