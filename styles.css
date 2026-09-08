@@ -16,8 +16,10 @@ article[data-testid="tweet"],
   top: 10px;
   right: 42px;
   max-width: min(42%, 190px);
+  display: inline-flex;
+  align-items: center;
   overflow: hidden;
-  padding: 2px 8px;
+  padding: 0;
   border: 1px solid var(--xal-accent);
   border-radius: 999px;
   color: var(--xal-accent);
@@ -32,13 +34,13 @@ article[data-testid="tweet"],
 }
 
 .xal-badge:hover,
-.xal-badge:focus-visible {
+.xal-badge:focus-within {
   color: color-mix(in srgb, var(--xal-accent) 72%, white);
   border-color: color-mix(in srgb, var(--xal-accent) 72%, white);
   outline: none;
 }
 
-.xal-badge[data-location-uncertain]::before {
+.xal-badge[data-location-uncertain] .xal-location-link::before {
   content: "~";
   margin-right: 3px;
 }
@@ -58,11 +60,79 @@ article[data-testid="tweet"],
   align-items: center;
   align-self: center;
   margin-left: 6px;
-  padding: 1px 6px;
+  padding: 0;
   max-width: 120px;
   font-size: 10px;
   line-height: 14px;
   vertical-align: middle;
+}
+
+.xal-location-link {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  padding: 2px 7px;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.xal-badge .xal-block-button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  flex: 0 0 23px;
+  width: 23px;
+  min-height: 20px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-left: 1px solid color-mix(in srgb, var(--xal-accent) 35%, transparent);
+  border-radius: 0;
+  background: transparent;
+  color: #ff5252;
+  font: 700 17px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  cursor: pointer;
+}
+
+.xal-badge .xal-block-button:hover {
+  background: #651b24;
+  color: #fff;
+}
+
+.xal-location-link:focus-visible,
+.xal-badge .xal-block-button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
+
+.xal-badge .xal-block-button:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
+.xal-block-notice {
+  position: fixed;
+  z-index: 2147483647;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - 40px);
+  box-sizing: border-box;
+  padding: 12px 18px;
+  border: 1px solid #39ff14;
+  border-radius: 12px;
+  color: #f4fff2;
+  background: #111b12;
+  box-shadow: 0 4px 20px #0008;
+  font: 500 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .xal-user-cell-identity-line {

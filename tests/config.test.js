@@ -25,7 +25,7 @@ test("keeps authenticated lookups inside the isolated extension world", () => {
   const manifest = JSON.parse(read("manifest.json"));
   assert.equal(manifest.content_scripts.length, 1);
   assert.equal(manifest.content_scripts[0].world, "ISOLATED");
-  assert.deepEqual(manifest.content_scripts[0].js, ["shared.js", "content.js"]);
+  assert.deepEqual(manifest.content_scripts[0].js, ["shared.js", "account-actions.js", "content.js"]);
   assert.equal(fs.existsSync(path.join(root, "page-agent.js")), false);
   const content = read("content.js");
   assert.match(content, /async function lookupAccount\(username, allowQueryRefresh = true\)/);
@@ -82,7 +82,7 @@ test("renders the Abomination81 override without a location lookup", () => {
 });
 test("manifest and icons are valid", () => {
   const manifest = JSON.parse(read("manifest.json"));
-  assert.equal(manifest.version, "0.9.1");
+  assert.equal(manifest.version, "0.9.2");
   for (const icon of Object.values(manifest.icons)) {
     assert.ok(fs.existsSync(path.join(root, icon)), `${icon} should exist`);
   }

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Abominations X account locator",
   "short_name": "Abom X Locator",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "Shows X's public 'Account based in' disclosure on posts and follower lists. Built by Abomination81.",
   "permissions": ["storage"],
   "host_permissions": ["https://x.com/*", "https://twitter.com/*", "https://abs.twimg.com/*"],
@@ -25,7 +25,7 @@
   "content_scripts": [
     {
       "matches": ["https://x.com/*", "https://twitter.com/*"],
-      "js": ["shared.js", "content.js"],
+      "js": ["shared.js", "account-actions.js", "content.js"],
       "css": ["styles.css"],
       "run_at": "document_idle",
       "world": "ISOLATED"

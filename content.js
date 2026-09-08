@@ -52,6 +52,16 @@
   const activeUsers = new Set();
   const surfacesByUsername = new Map();
   const dirtySurfaces = new Set();
+  // Targets stay in the isolated world; page-visible data attributes cannot redirect a block.
+  const blockTargets = new WeakMap();
+  let blockNotice = null;
+  let noticeTimer = null;
+  const blockController = globalThis.XAccountLocationActions.createBlockController({
+    origin: location.origin,
+    fetch: (...args) => fetch(...args),
+    getSession: () => ({ username: detectOwnUsername(), csrf: csrfToken(), bearer: FALLBACK_BEARER_TOKEN }),
+    onChange: renderBlockButtons
+  });
 
   const storageGet = (keys) => new Promise((resolve) => chrome.storage.local.get(keys, resolve));
   const storageSet = (values) => new Promise((resolve) => chrome.storage.local.set(values, resolve));
@@ -388,43 +398,121 @@
     location.assign(href);
   }
 
+  function usernameForSurface(surface) {
+    return surface.matches(USER_CELL_SELECTOR)
+      ? usernameForUserCell(surface)
+      : surface.matches(QUOTE_SELECTOR)
+        ? usernameForQuote(surface)
+        : usernameForArticle(surface);
+  }
+
+  function showBlockNotice(message) {
+    if (!blockNotice?.isConnected) {
+      blockNotice = document.createElement("div");
+      blockNotice.className = "xal-block-notice";
+      blockNotice.setAttribute("role", "status");
+      document.body.appendChild(blockNotice);
+    }
+    blockNotice.textContent = message;
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => blockNotice?.remove(), 6000);
+  }
+
+  function renderBlockButtons() {
+    const viewer = detectOwnUsername();
+    for (const button of document.querySelectorAll(".xal-block-button")) {
+      const target = blockTargets.get(button);
+      if (!target) continue;
+      const state = blockController.stateFor(viewer, target.username);
+      button.disabled = state !== "idle";
+      button.dataset.state = state;
+      button.textContent = state === "pending" ? "…" : state === "blocked" ? "✓" : "×";
+      button.title = state === "pending" ? `Blocking @${target.username}…`
+        : state === "blocked" ? `Blocked @${target.username}` : `Block @${target.username}`;
+      button.setAttribute("aria-label", button.title);
+      button.setAttribute("aria-busy", String(state === "pending"));
+    }
+  }
+
+  async function activateBlockButton(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    // A page script's .click() or dispatchEvent() must never cause an authenticated write.
+    if (!event.isTrusted || !settings.enabled) return;
+    const button = event.currentTarget;
+    const target = blockTargets.get(button);
+    if (!target || button.disabled || !target.surface.isConnected || !button.isConnected) return;
+    if (!shared.sameUsername(usernameForSurface(target.surface), target.username)) {
+      showBlockNotice("This post changed. Try the updated block button.");
+      prepareSurface(target.surface);
+      return;
+    }
+    const result = await blockController.block(target.username);
+    if (result.ok) {
+      showBlockNotice(`Blocked @${target.username}.`);
+      return;
+    }
+    const messages = {
+      "busy": "A block is already in progress. Try again in a moment.",
+      "not-signed-in": "Refresh X while signed in, then try blocking again.",
+      "not-authorized": "X did not allow the block. Refresh X or block from the account’s profile.",
+      "own-account": "You cannot block your own account.",
+      "rate-limited": "X temporarily limited blocking. Try again later.",
+      "timeout": "X took too long to confirm the block. Check the account’s profile before trying again.",
+      "network-error": "Could not confirm the block. Check your connection and the account’s profile.",
+      "unconfirmed": "X did not confirm the block. Check the account’s profile."
+    };
+    showBlockNotice(messages[result.error] || "Could not block this account. Try from its X profile.");
+  }
+
   function showBadge(surface, username, item) {
     if (!item.location || !surface.isConnected || !settings.enabled) return;
     const isUserCell = surface.matches(USER_CELL_SELECTOR);
     let badge = badgeForSurface(surface);
     if (!badge) {
-      badge = document.createElement(isUserCell ? "span" : "a");
+      badge = document.createElement("span");
       badge.className = "xal-badge";
       badge.classList.toggle("xal-user-cell-badge", isUserCell);
+      const locationLink = document.createElement(isUserCell ? "span" : "a");
+      locationLink.className = "xal-location-link";
       if (isUserCell) {
-        badge.setAttribute("role", "link");
-        badge.tabIndex = 0;
-        badge.addEventListener("click", activateUserCellBadge);
-        badge.addEventListener("keydown", activateUserCellBadge);
+        locationLink.setAttribute("role", "link");
+        locationLink.tabIndex = 0;
+        locationLink.addEventListener("click", activateUserCellBadge);
+        locationLink.addEventListener("keydown", activateUserCellBadge);
       } else {
-        badge.target = "_self";
-        badge.rel = "nofollow";
-        badge.addEventListener("click", (event) => event.stopPropagation());
+        locationLink.target = "_self";
+        locationLink.rel = "nofollow";
+        locationLink.addEventListener("click", (event) => event.stopPropagation());
       }
+      const blockButton = document.createElement("button");
+      blockButton.type = "button";
+      blockButton.className = "xal-block-button";
+      blockButton.addEventListener("click", activateBlockButton);
+      blockButton.addEventListener("keydown", (event) => event.stopPropagation());
+      blockTargets.set(blockButton, { username, surface });
+      badge.append(locationLink, blockButton);
       badgeHostForSurface(surface).appendChild(badge);
     }
     const uncertain = item.accurate === false;
     const note = uncertain ? " X marks this location as potentially inaccurate." : "";
     const aboutHref = `/${encodeURIComponent(username)}/about`;
-    if (isUserCell) badge.dataset.xalHref = aboutHref;
-    else badge.href = aboutHref;
-    badge.textContent = shared.displayLocation(item.location);
+    const locationLink = badge.querySelector(".xal-location-link");
+    if (isUserCell) locationLink.dataset.xalHref = aboutHref;
+    else locationLink.href = aboutHref;
+    locationLink.textContent = shared.displayLocation(item.location);
     badge.dataset.xalLocation = item.location;
     badge.style.setProperty(
       "--xal-accent",
       shared.accentColorForLocation(item.location, settings.locationColors, settings.badgeColor)
     );
-    badge.title = item.override
+    locationLink.title = item.override
       ? `@${username}'s extension location is ${item.location}. Custom label by Abomination81.`
       : `X says @${username}'s account is based in ${item.location}.${note} Not proof of nationality or identity. Built by Abomination81.`;
-    badge.setAttribute("aria-label", badge.title);
+    locationLink.setAttribute("aria-label", locationLink.title);
     badge.toggleAttribute("data-location-uncertain", uncertain);
     surface.dataset.xalLocation = item.location;
+    renderBlockButtons();
   }
 
   function applyToSurfaces(username, item) {

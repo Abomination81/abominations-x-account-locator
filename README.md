@@ -2,7 +2,7 @@
 
 **Built by [Abomination81](https://github.com/Abomination81).**
 
-Abominations X Account Locator places X's public **Account based in** disclosure directly on ordinary posts, quoted posts, and follower/following lists. Version 0.9.1 adds country and region color rules, red defaults for South Asia, Southeast Asia, and Africa, fast lookups, and a hardened isolated-world design. It excludes the signed-in account and gives `@Abomination81` the extension-only custom location `XANADU` for everyone else.
+Abominations X Account Locator places X's public **Account based in** disclosure directly on ordinary posts, quoted posts, and follower/following lists. Version 0.9.2 adds a small red × beside each country so you can block that account in one click. It includes country and region color rules, fast lookups, and an isolated-world design. It excludes the signed-in account and gives `@Abomination81` the extension-only custom location `XANADU` for everyone else.
 
 ![Abominations X Account Locator banner](docs/assets/marquee-promo-1400x560.png)
 
@@ -14,7 +14,7 @@ The easiest instructions and download are on the public installation page:
 
 Quick version:
 
-1. Download and unzip `abominations-x-account-locator-v0.9.1.zip` from the installation page.
+1. Download and unzip `abominations-x-account-locator-v0.9.2.zip` from the installation page.
 2. Open `chrome://extensions` in Chrome.
 3. Turn on **Developer mode** in the upper-right corner.
 4. Click **Load unpacked**.
@@ -23,13 +23,14 @@ Quick version:
 
 Keep the unzipped folder on your computer after installation. Chrome loads the extension from that folder.
 
-Release ZIP SHA-256: `1b6796acd5e2917ad0f3b40248af10d34117f8115f2e737ba6e048d8b40be6c2` ([checksum file](docs/downloads/SHA256SUMS.txt)).
+Release ZIP SHA-256: `f56efacf930fa917680b9c194750a86e063612bd7d60baddc7db0617f8861ae0` ([checksum file](docs/downloads/SHA256SUMS.txt)).
 
 ## Features
 
 - Shows X's public account-location label while you scroll.
 - Supports ordinary posts and quoted posts.
 - Supports Verified Followers, Followers, and Following lists.
+- Adds a red × to each country badge: hover to check the handle, then click to block that account immediately. A checkmark appears only after X confirms the block. Country text still opens the location details.
 - Does not request or display the signed-in account's own location.
 - Displays `XANADU` for `@Abomination81` as a transparent extension-only custom label.
 - Abbreviates `United States` to `USA`, `North America` to `N. America`, and `United Kingdom` to `UK`.
@@ -48,7 +49,7 @@ X says its account-location field is inferred from aggregated IP addresses. It m
 
 The extension has no developer-operated server, advertising, analytics, or data brokerage. It communicates with X and X's asset domain through the user's existing X session to retrieve X's own public account-location result. Settings and the bounded lookup cache remain in Chrome's local extension storage.
 
-Version 0.9.1 performs lookups inside Chrome's isolated extension world. It does not inject a main-world agent, replace X's global network functions, capture page authorization headers, or expose a page-visible messaging bridge.
+Version 0.9.2 performs lookups and user-clicked blocks inside Chrome's isolated extension world. It does not inject a main-world agent, replace X's global network functions, capture page authorization headers, or expose a page-visible messaging bridge. Blocking requires a direct click; the extension does not automatically select or block accounts based on location. A location-lookup pause does not pause the block button; X can separately limit blocking. You can undo a block from that account's profile in X.
 
 **Follower-list warning:** Scanning many follower or following rows can quickly use X's location-lookup allowance. If X applies a temporary limit, new uncached locations pause until X's reset; cached locations remain visible.
 
@@ -59,7 +60,8 @@ Download and unzip the newest package, replace the old extension folder, open `c
 ## Test
 
 ```sh
-node --test tests/*.test.js
+npm ci
+npm test
 ```
 
 This project is independent and is not affiliated with X Corp. Manual installation is provided because the extension is not distributed through the Chrome Web Store.

@@ -15,11 +15,11 @@
     <header class="hero">
       <img class="hero-art" src="assets/marquee-promo-1400x560.png" alt="Abominations X Account Locator: see X's public account location at a glance">
       <div class="hero-actions" aria-label="Primary actions">
-        <a class="button button-primary" href="downloads/abominations-x-account-locator-v0.9.1.zip" download>Download version 0.9.1</a>
+        <a class="button button-primary" href="downloads/abominations-x-account-locator-v0.9.2.zip" download>Download version 0.9.2</a>
         <a class="button" href="https://github.com/Abomination81/abominations-x-account-locator">View source on GitHub</a>
       </div>
       <p class="download-note">Free manual Chrome installation. No Chrome Web Store account or publisher email is required.</p>
-      <p class="download-note">SHA-256: <code>1b6796acd5e2917ad0f3b40248af10d34117f8115f2e737ba6e048d8b40be6c2</code> · <a href="downloads/SHA256SUMS.txt">checksum file</a></p>
+      <p class="download-note">SHA-256: <code>f56efacf930fa917680b9c194750a86e063612bd7d60baddc7db0617f8861ae0</code> · <a href="downloads/SHA256SUMS.txt">checksum file</a></p>
     </header>
 
     <main>
@@ -30,6 +30,7 @@
           <p class="lede">The extension places X's public <strong>Account based in</strong> disclosure on posts and follower lists. Set colors by country or region; South Asia, Southeast Asia, and Africa default to red.</p>
           <ul class="feature-list">
             <li>Regular and quoted posts</li>
+            <li>A small red × beside the country to block that account in one click</li>
             <li>Follower-list badges stay centered after the full name, checkmark, lock, and emojis</li>
             <li>Your own account is automatically excluded</li>
             <li><code>@Abomination81</code> appears as <code>XANADU</code> for everyone else</li>
@@ -98,9 +99,11 @@
             <li>Clear the local cache</li>
           </ul>
           <p><strong>Follower-list warning:</strong> Scanning many follower or following rows can quickly use X's location-lookup allowance. If X applies a temporary limit, new locations pause until X resets it; cached locations remain visible.</p>
+          <p><strong>Quick block:</strong> Hover over a badge’s red × to check the handle, then click to block immediately. A checkmark means X confirmed the block. Clicking the country still opens its location details. You can unblock from that account’s X profile.</p>
         </article>
         <article class="panel">
           <h2>Privacy</h2>
+          <p>Clicking the red × sends that account’s username to X to add it to your block list. Blocking happens only when you click.</p>
           <p>There is no developer-operated server, advertising, analytics, or data brokerage. Your signed-in username is detected locally only to exclude your own account. Requests needed for other visible accounts go only to X and X's asset domain through your existing X session. Settings and the bounded lookup cache stay in Chrome's local extension storage.</p>
           <p><a href="https://github.com/Abomination81/abominations-x-account-locator/blob/main/PRIVACY.md">Read the full privacy explanation</a>.</p>
         </article>
