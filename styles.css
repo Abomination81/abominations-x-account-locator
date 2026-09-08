@@ -101,7 +101,7 @@ article[data-testid="tweet"],
   cursor: pointer;
 }
 
-.xal-badge .xal-block-button:hover {
+.xal-badge .xal-block-button:hover:not(:disabled) {
   background: #651b24;
   color: #fff;
 }
@@ -117,22 +117,26 @@ article[data-testid="tweet"],
   opacity: 0.8;
 }
 
-.xal-block-notice {
-  position: fixed;
-  z-index: 2147483647;
-  bottom: 26px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: max-content;
-  max-width: calc(100vw - 40px);
-  box-sizing: border-box;
-  padding: 12px 18px;
-  border: 1px solid #39ff14;
-  border-radius: 12px;
-  color: #f4fff2;
-  background: #111b12;
-  box-shadow: 0 4px 20px #0008;
-  font: 500 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+.xal-badge .xal-block-button[data-state="blocked"] {
+  color: #000;
+  background: transparent;
+  pointer-events: none;
+  animation: xal-block-complete 350ms ease-out forwards;
+}
+
+.xal-badge .xal-block-button[hidden] {
+  display: none;
+}
+
+@keyframes xal-block-complete {
+  0%, 35% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xal-badge .xal-block-button[data-state="blocked"] {
+    animation-duration: 1ms;
+  }
 }
 
 .xal-user-cell-identity-line {

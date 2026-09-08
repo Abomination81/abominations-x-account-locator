@@ -260,9 +260,15 @@ async function fixture(t, { pathname = "/home", html, send, verify, paused = fal
 }
 
 const tweet = (username, id, content = "") => `<article data-testid="tweet" id="${id}"><a href="/${username}/status/123">${username}</a>${content}</article>`;
+const assertNoBlockNotice = (document) => assert.equal(document.querySelector('.xal-block-notice, [role="status"]'), null);
+function finishBlockAnimation(window, button) {
+  const event = new window.Event("animationend", { bubbles: true });
+  Object.defineProperty(event, "animationName", { value: "xal-block-complete" });
+  button.dispatchEvent(event);
+}
 
 test("DOM: country link and block are separate; forged clicks cannot block", async (t) => {
-  const { document, posts, trustedClick } = await fixture(t, { html: tweet("someone", "post") });
+  const { window, document, posts, trustedClick } = await fixture(t, { html: tweet("someone", "post") });
   const badge = document.querySelector(".xal-badge");
   assert.equal(badge.querySelector(".xal-location-link").getAttribute("href"), "/someone/about");
   const button = badge.querySelector("button");
@@ -273,7 +279,32 @@ test("DOM: country link and block are separate; forged clicks cannot block", asy
   await trustedClick(button);
   assert.equal(new URLSearchParams(posts[0].options.body).get("screen_name"), "someone");
   assert.equal(button.getAttribute("aria-label"), "Blocked @someone");
-  assert.equal(document.querySelector('[role="status"]').textContent, "Blocked @someone.");
+  assert.equal(button.textContent, "×");
+  assert.equal(button.dataset.state, "blocked");
+  assert.equal(button.hidden, false);
+  assertNoBlockNotice(document);
+  finishBlockAnimation(window, button);
+  assert.equal(button.hidden, true);
+  assert.equal(badge.querySelector(".xal-location-link").getAttribute("href"), "/someone/about");
+  assert.equal(badge.querySelector(".xal-location-link").textContent, "CANADA");
+});
+
+test("DOM: pending blocks keep the cross visible and expose their busy state without a popup", async (t) => {
+  let resolve;
+  const { document, trustedClick } = await fixture(t, {
+    html: tweet("someone", "post"), send: () => new Promise((done) => { resolve = done; })
+  });
+  const button = document.querySelector("button");
+  const request = trustedClick(button);
+  assert.equal(button.textContent, "×");
+  assert.equal(button.dataset.state, "pending");
+  assert.equal(button.getAttribute("aria-busy"), "true");
+  assert.equal(button.disabled, true);
+  assert.equal(button.hidden, false);
+  assertNoBlockNotice(document);
+  resolve(response({ screen_name: "someone", blocking: true }));
+  await request;
+  assert.equal(button.getAttribute("aria-busy"), "false");
 });
 
 test("DOM: quoted button blocks the quote author without blocking its parent", async (t) => {
@@ -301,30 +332,46 @@ test("DOM: rejects stale and detached targets and updates every copy of a blocke
   document.querySelector("#one > a").href = "/replacement/status/789";
   await trustedClick(button);
   assert.equal(posts.length, 0);
+  assertNoBlockNotice(document);
   const current = document.querySelector("#one button");
   assert.equal(current.getAttribute("aria-label"), "Block @replacement");
   document.querySelector("#one").remove();
   await trustedClick(current);
   assert.equal(posts.length, 0);
+  assertNoBlockNotice(document);
   await trustedClick(document.querySelector("#two button"));
   assert.equal(posts.length, 1);
   assert.equal(document.querySelector("#two button").disabled, true);
 });
 
-test("DOM: failed blocks show an error and leave the button available", async (t) => {
-  const { document, trustedClick } = await fixture(t, { html: tweet("someone", "post"), send: async () => response({}, 403) });
+test("DOM: failed blocks leave the cross available without a popup", async (t) => {
+  const { window, document, trustedClick } = await fixture(t, { html: tweet("someone", "post"), send: async () => response({}, 403) });
   const button = document.querySelector("button");
   await trustedClick(button);
   assert.equal(button.disabled, false);
   assert.equal(button.textContent, "×");
-  assert.match(document.querySelector('[role="status"]').textContent, /did not allow the block/);
+  assert.equal(button.dataset.state, "idle");
+  assert.equal(button.hidden, false);
+  assertNoBlockNotice(document);
+  finishBlockAnimation(window, button);
+  assert.equal(button.hidden, false);
 });
 
-test("DOM: blocking synchronizes other copies of the same account", async (t) => {
-  const { document, trustedClick } = await fixture(t, { html: tweet("someone", "one") + tweet("someone", "two") });
+test("DOM: blocking synchronizes existing copies and keeps later copies hidden", async (t) => {
+  const { window, document, trustedClick } = await fixture(t, { html: tweet("someone", "one") + tweet("someone", "two") });
   await trustedClick(document.querySelector("#one button"));
-  assert.equal(document.querySelector("#two button").getAttribute("aria-label"), "Blocked @someone");
-  assert.equal(document.querySelector("#two button").disabled, true);
+  const second = document.querySelector("#two button");
+  assert.equal(second.getAttribute("aria-label"), "Blocked @someone");
+  assert.equal(second.disabled, true);
+  assert.equal(second.dataset.state, "blocked");
+  finishBlockAnimation(window, second);
+  assert.equal(second.hidden, true);
+  document.body.insertAdjacentHTML("beforeend", tweet("someone", "three"));
+  await new Promise(setImmediate);
+  assert.equal(document.querySelector("#three button").hidden, true);
+  assert.equal(document.querySelector("#three .xal-location-link").getAttribute("href"), "/someone/about");
+  assert.equal(second.hidden, true);
+  assertNoBlockNotice(document);
 });
 
 test("DOM: missing mutation flag shows success once the read confirms blocking", async (t) => {
@@ -335,17 +382,21 @@ test("DOM: missing mutation flag shows success once the read confirms blocking",
   });
   await trustedClick(document.querySelector("#one button"));
   assert.equal(posts.length, 1);
-  assert.equal(document.querySelector('[role="status"]').textContent, "Blocked @someone.");
-  assert.equal(document.querySelector("#two button").textContent, "✓");
+  assertNoBlockNotice(document);
+  assert.equal(document.querySelector("#two button").textContent, "×");
+  assert.equal(document.querySelector("#two button").dataset.state, "blocked");
   assert.equal(document.querySelector("#two button").disabled, true);
 });
 
-test("DOM: an inconclusive check explains the account may already be blocked", async (t) => {
+test("DOM: an inconclusive check leaves the cross available without a popup", async (t) => {
   const { document, posts, trustedClick } = await fixture(t, {
     html: tweet("someone", "post"), send: async () => response({ screen_name: "someone" })
   });
   await trustedClick(document.querySelector("button"));
   assert.equal(posts.length, 1);
-  assert.match(document.querySelector('[role="status"]').textContent, /may already be blocked/);
+  assertNoBlockNotice(document);
   assert.equal(document.querySelector("button").textContent, "×");
+  assert.equal(document.querySelector("button").dataset.state, "idle");
+  assert.equal(document.querySelector("button").disabled, false);
+  assert.equal(document.querySelector("button").hidden, false);
 });

@@ -54,8 +54,6 @@
   const dirtySurfaces = new Set();
   // Targets stay in the isolated world; page-visible data attributes cannot redirect a block.
   const blockTargets = new WeakMap();
-  let blockNotice = null;
-  let noticeTimer = null;
   const blockController = globalThis.XAccountLocationActions.createBlockController({
     origin: location.origin,
     fetch: (...args) => fetch(...args),
@@ -406,30 +404,24 @@
         : usernameForArticle(surface);
   }
 
-  function showBlockNotice(message) {
-    if (!blockNotice?.isConnected) {
-      blockNotice = document.createElement("div");
-      blockNotice.className = "xal-block-notice";
-      blockNotice.setAttribute("role", "status");
-      document.body.appendChild(blockNotice);
-    }
-    blockNotice.textContent = message;
-    clearTimeout(noticeTimer);
-    noticeTimer = setTimeout(() => blockNotice?.remove(), 6000);
-  }
-
   function renderBlockButtons() {
     const viewer = detectOwnUsername();
     for (const button of document.querySelectorAll(".xal-block-button")) {
       const target = blockTargets.get(button);
       if (!target) continue;
       const state = blockController.stateFor(viewer, target.username);
+      const previousState = button.dataset.state;
       button.disabled = state !== "idle";
       button.dataset.state = state;
-      button.textContent = state === "pending" ? "…" : state === "blocked" ? "✓" : "×";
-      button.title = state === "pending" ? `Blocking @${target.username}…`
+      button.textContent = "×";
+      // Newly rendered copies of an already-blocked account do not replay the animation.
+      if (state !== "blocked") button.hidden = false;
+      else if (!previousState) button.hidden = true;
+      const label = state === "pending" ? `Blocking @${target.username}…`
         : state === "blocked" ? `Blocked @${target.username}` : `Block @${target.username}`;
-      button.setAttribute("aria-label", button.title);
+      if (state === "idle") button.title = label;
+      else button.removeAttribute("title");
+      button.setAttribute("aria-label", label);
       button.setAttribute("aria-busy", String(state === "pending"));
     }
   }
@@ -443,26 +435,16 @@
     const target = blockTargets.get(button);
     if (!target || button.disabled || !target.surface.isConnected || !button.isConnected) return;
     if (!shared.sameUsername(usernameForSurface(target.surface), target.username)) {
-      showBlockNotice("This post changed. Try the updated block button.");
       prepareSurface(target.surface);
       return;
     }
     const result = await blockController.block(target.username);
-    if (result.ok) {
-      showBlockNotice(`Blocked @${target.username}.`);
-      return;
+    if (!result.ok && button.isConnected && blockTargets.get(button) === target) {
+      // Failure stays red and available; only confirmed success disappears.
+      // Keep an accessible explanation without a toast, dialog, or hover popup.
+      button.removeAttribute("title");
+      button.setAttribute("aria-label", `Block @${target.username}; previous attempt not confirmed. Check the account’s profile before retrying.`);
     }
-    const messages = {
-      "busy": "A block is already in progress. Try again in a moment.",
-      "not-signed-in": "Refresh X while signed in, then try blocking again.",
-      "not-authorized": "X did not allow the block. Refresh X or block from the account’s profile.",
-      "own-account": "You cannot block your own account.",
-      "rate-limited": "X temporarily limited blocking. Try again later.",
-      "timeout": "X took too long to confirm the block. Check the account’s profile before trying again.",
-      "network-error": "Could not confirm the block. Check your connection and the account’s profile.",
-      "unconfirmed": "The block request was sent, but its status could not be verified. The account may already be blocked; check its profile before retrying."
-    };
-    showBlockNotice(messages[result.error] || "Could not block this account. Try from its X profile.");
   }
 
   function showBadge(surface, username, item) {
@@ -489,6 +471,11 @@
       blockButton.type = "button";
       blockButton.className = "xal-block-button";
       blockButton.addEventListener("click", activateBlockButton);
+      blockButton.addEventListener("animationend", (event) => {
+        if (event.animationName === "xal-block-complete" && blockButton.dataset.state === "blocked") {
+          blockButton.hidden = true;
+        }
+      });
       blockButton.addEventListener("keydown", (event) => event.stopPropagation());
       blockTargets.set(blockButton, { username, surface });
       badge.append(locationLink, blockButton);
